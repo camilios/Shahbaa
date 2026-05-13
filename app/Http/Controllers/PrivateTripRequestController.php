@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\PrivateTripRequestRequest;
 use App\Models\PrivateTripRequest;
-use Illuminate\Http\Request;
 
 class PrivateTripRequestController extends Controller
 {
@@ -17,28 +17,14 @@ class PrivateTripRequestController extends Controller
         return $privateTripRequest->load('user');
     }
 
-    public function store(Request $request)
+    public function store(PrivateTripRequestRequest $request)
     {
-        $data = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'from_location' => 'required|string|max:255',
-            'to_location' => 'required|string|max:255',
-            'status' => 'nullable|string|max:100',
-        ]);
-
-        return PrivateTripRequest::create($data);
+        return PrivateTripRequest::create($request->validated());
     }
 
-    public function update(Request $request, PrivateTripRequest $privateTripRequest)
+    public function update(PrivateTripRequestRequest $request, PrivateTripRequest $privateTripRequest)
     {
-        $data = $request->validate([
-            'user_id' => 'sometimes|required|exists:users,id',
-            'from_location' => 'nullable|string|max:255',
-            'to_location' => 'nullable|string|max:255',
-            'status' => 'nullable|string|max:100',
-        ]);
-
-        $privateTripRequest->update($data);
+        $privateTripRequest->update($request->validated());
 
         return $privateTripRequest;
     }

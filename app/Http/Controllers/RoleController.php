@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\RoleRequest;
 use App\Models\Role;
-use Illuminate\Http\Request;
 
 class RoleController extends Controller
 {
@@ -17,24 +17,14 @@ class RoleController extends Controller
         return $role->load('user');
     }
 
-    public function store(Request $request)
+    public function store(RoleRequest $request)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'user_id' => 'required|exists:users,id',
-        ]);
-
-        return Role::create($data);
+        return Role::create($request->validated());
     }
 
-    public function update(Request $request, Role $role)
+    public function update(RoleRequest $request, Role $role)
     {
-        $data = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'user_id' => 'sometimes|required|exists:users,id',
-        ]);
-
-        $role->update($data);
+        $role->update($request->validated());
 
         return $role;
     }

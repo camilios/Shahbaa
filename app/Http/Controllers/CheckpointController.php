@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CheckpointRequest;
 use App\Models\Checkpoint;
-use Illuminate\Http\Request;
 
 class CheckpointController extends Controller
 {
@@ -17,26 +17,14 @@ class CheckpointController extends Controller
         return $checkpoint->load(['tripCheckpoints', 'pickupBookings', 'dropoffBookings', 'driverCheckpointLogs']);
     }
 
-    public function store(Request $request)
+    public function store(CheckpointRequest $request)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'location' => 'nullable|string|max:255',
-            'governorate' => 'nullable|string|max:255',
-        ]);
-
-        return Checkpoint::create($data);
+        return Checkpoint::create($request->validated());
     }
 
-    public function update(Request $request, Checkpoint $checkpoint)
+    public function update(CheckpointRequest $request, Checkpoint $checkpoint)
     {
-        $data = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'location' => 'nullable|string|max:255',
-            'governorate' => 'nullable|string|max:255',
-        ]);
-
-        $checkpoint->update($data);
+        $checkpoint->update($request->validated());
 
         return $checkpoint;
     }

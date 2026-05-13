@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\TripRequest;
 use App\Models\Trip;
-use Illuminate\Http\Request;
 
 class TripController extends Controller
 {
@@ -17,40 +17,14 @@ class TripController extends Controller
         return $trip->load(['driver', 'seats', 'checkpoints', 'ratings', 'waitingList']);
     }
 
-    public function store(Request $request)
+    public function store(TripRequest $request)
     {
-        $data = $request->validate([
-            'driver_id' => 'required|exists:users,id',
-            'type' => 'required|string|max:255',
-            'point_price' => 'nullable|numeric|min:0',
-            'money_price' => 'nullable|numeric|min:0',
-            'status' => 'nullable|string|max:100',
-            'departure_date' => 'nullable|date',
-            'arrival_date' => 'nullable|date',
-            'total_seats' => 'nullable|integer|min:0',
-            'available_seats' => 'nullable|integer|min:0',
-            'earned_points' => 'nullable|integer|min:0',
-        ]);
-
-        return Trip::create($data);
+        return Trip::create($request->validated());
     }
 
-    public function update(Request $request, Trip $trip)
+    public function update(TripRequest $request, Trip $trip)
     {
-        $data = $request->validate([
-            'driver_id' => 'sometimes|required|exists:users,id',
-            'type' => 'sometimes|required|string|max:255',
-            'point_price' => 'nullable|numeric|min:0',
-            'money_price' => 'nullable|numeric|min:0',
-            'status' => 'nullable|string|max:100',
-            'departure_date' => 'nullable|date',
-            'arrival_date' => 'nullable|date',
-            'total_seats' => 'nullable|integer|min:0',
-            'available_seats' => 'nullable|integer|min:0',
-            'earned_points' => 'nullable|integer|min:0',
-        ]);
-
-        $trip->update($data);
+        $trip->update($request->validated());
 
         return $trip;
     }

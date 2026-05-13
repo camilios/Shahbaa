@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\RatingRequest;
 use App\Models\Rating;
-use Illuminate\Http\Request;
 
 class RatingController extends Controller
 {
@@ -17,28 +17,14 @@ class RatingController extends Controller
         return $rating->load(['customer', 'trip']);
     }
 
-    public function store(Request $request)
+    public function store(RatingRequest $request)
     {
-        $data = $request->validate([
-            'customer_id' => 'required|exists:users,id',
-            'trip_id' => 'required|exists:trips,id',
-            'rate' => 'required|integer|min:0|max:5',
-            'comment' => 'nullable|string',
-        ]);
-
-        return Rating::create($data);
+        return Rating::create($request->validated());
     }
 
-    public function update(Request $request, Rating $rating)
+    public function update(RatingRequest $request, Rating $rating)
     {
-        $data = $request->validate([
-            'customer_id' => 'sometimes|required|exists:users,id',
-            'trip_id' => 'sometimes|required|exists:trips,id',
-            'rate' => 'nullable|integer|min:0|max:5',
-            'comment' => 'nullable|string',
-        ]);
-
-        $rating->update($data);
+        $rating->update($request->validated());
 
         return $rating;
     }

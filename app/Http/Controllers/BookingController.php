@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BookingRequest;
 use App\Models\Booking;
-use Illuminate\Http\Request;
 
 class BookingController extends Controller
 {
@@ -17,34 +17,14 @@ class BookingController extends Controller
         return $booking->load(['user', 'driver', 'trip', 'pickupCheckpoint', 'dropoffCheckpoint', 'scouring']);
     }
 
-    public function store(Request $request)
+    public function store(BookingRequest $request)
     {
-        $data = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'driver_id' => 'required|exists:users,id',
-            'trip_id' => 'required|exists:trips,id',
-            'pickup_checkpoint_id' => 'required|exists:checkpoints,id',
-            'dropoff_checkpoint_id' => 'required|exists:checkpoints,id',
-            'seats_count' => 'required|integer|min:1',
-            'status' => 'nullable|string|max:100',
-        ]);
-
-        return Booking::create($data);
+        return Booking::create($request->validated());
     }
 
-    public function update(Request $request, Booking $booking)
+    public function update(BookingRequest $request, Booking $booking)
     {
-        $data = $request->validate([
-            'user_id' => 'sometimes|required|exists:users,id',
-            'driver_id' => 'sometimes|required|exists:users,id',
-            'trip_id' => 'sometimes|required|exists:trips,id',
-            'pickup_checkpoint_id' => 'sometimes|required|exists:checkpoints,id',
-            'dropoff_checkpoint_id' => 'sometimes|required|exists:checkpoints,id',
-            'seats_count' => 'nullable|integer|min:1',
-            'status' => 'nullable|string|max:100',
-        ]);
-
-        $booking->update($data);
+        $booking->update($request->validated());
 
         return $booking;
     }

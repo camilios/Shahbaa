@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ScouringRequest;
 use App\Models\Scouring;
-use Illuminate\Http\Request;
 
 class ScouringController extends Controller
 {
@@ -17,28 +17,14 @@ class ScouringController extends Controller
         return $scouring->load(['driverCheckpointLog', 'customer', 'booking']);
     }
 
-    public function store(Request $request)
+    public function store(ScouringRequest $request)
     {
-        $data = $request->validate([
-            'driver_checkpoint_log_id' => 'required|exists:driver_checkpoint_logs,id',
-            'customer_id' => 'required|exists:users,id',
-            'booking_id' => 'required|exists:bookings,id',
-            'points' => 'nullable|integer|min:0',
-        ]);
-
-        return Scouring::create($data);
+        return Scouring::create($request->validated());
     }
 
-    public function update(Request $request, Scouring $scouring)
+    public function update(ScouringRequest $request, Scouring $scouring)
     {
-        $data = $request->validate([
-            'driver_checkpoint_log_id' => 'sometimes|required|exists:driver_checkpoint_logs,id',
-            'customer_id' => 'sometimes|required|exists:users,id',
-            'booking_id' => 'sometimes|required|exists:bookings,id',
-            'points' => 'nullable|integer|min:0',
-        ]);
-
-        $scouring->update($data);
+        $scouring->update($request->validated());
 
         return $scouring;
     }

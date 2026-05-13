@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ComplaintRequest;
 use App\Models\Complaint;
-use Illuminate\Http\Request;
 
 class ComplaintController extends Controller
 {
@@ -17,26 +17,14 @@ class ComplaintController extends Controller
         return $complaint->load('customer');
     }
 
-    public function store(Request $request)
+    public function store(ComplaintRequest $request)
     {
-        $data = $request->validate([
-            'customer_id' => 'required|exists:users,id',
-            'comment' => 'required|string',
-            'status' => 'nullable|string|max:100',
-        ]);
-
-        return Complaint::create($data);
+        return Complaint::create($request->validated());
     }
 
-    public function update(Request $request, Complaint $complaint)
+    public function update(ComplaintRequest $request, Complaint $complaint)
     {
-        $data = $request->validate([
-            'customer_id' => 'sometimes|required|exists:users,id',
-            'comment' => 'nullable|string',
-            'status' => 'nullable|string|max:100',
-        ]);
-
-        $complaint->update($data);
+        $complaint->update($request->validated());
 
         return $complaint;
     }

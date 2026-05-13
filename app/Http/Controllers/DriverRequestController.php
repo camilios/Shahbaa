@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\DriverRequestRequest;
 use App\Models\DriverRequest;
-use Illuminate\Http\Request;
 
 class DriverRequestController extends Controller
 {
@@ -17,28 +17,14 @@ class DriverRequestController extends Controller
         return $driverRequest->load(['driver', 'trip']);
     }
 
-    public function store(Request $request)
+    public function store(DriverRequestRequest $request)
     {
-        $data = $request->validate([
-            'driver_id' => 'required|exists:users,id',
-            'trip_id' => 'required|exists:trips,id',
-            'notes' => 'nullable|string',
-            'status' => 'nullable|string|max:100',
-        ]);
-
-        return DriverRequest::create($data);
+        return DriverRequest::create($request->validated());
     }
 
-    public function update(Request $request, DriverRequest $driverRequest)
+    public function update(DriverRequestRequest $request, DriverRequest $driverRequest)
     {
-        $data = $request->validate([
-            'driver_id' => 'sometimes|required|exists:users,id',
-            'trip_id' => 'sometimes|required|exists:trips,id',
-            'notes' => 'nullable|string',
-            'status' => 'nullable|string|max:100',
-        ]);
-
-        $driverRequest->update($data);
+        $driverRequest->update($request->validated());
 
         return $driverRequest;
     }
