@@ -7,11 +7,12 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -19,15 +20,19 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'full_name',
+        'father_name',
+        'mother_name',
         'email',
         'password',
         'phone',
         'gender',
-        'role',
+        'role_id',
         'status',
+        'national_number',
+        'photo'
     ];
-
+    protected $appends = ['photo_url'];
     /**
      * The attributes that should be hidden for serialization.
      *
@@ -51,9 +56,9 @@ class User extends Authenticatable
         ];
     }
 
-    public function roles()
+    public function role()
     {
-        return $this->hasMany(Role::class);
+        return $this->belongsTo(Role::class);
     }
 
     public function trips()
@@ -99,5 +104,12 @@ class User extends Authenticatable
     public function driverCheckpointLogs()
     {
         return $this->hasMany(DriverCheckpointLog::class, 'driver_id');
+    }
+
+    public function getPhotoUrlAttribute()
+    {
+        return $this->photo
+            ? asset('storage/' . $this->photo)
+            : null;
     }
 }

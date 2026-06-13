@@ -12,9 +12,17 @@ use App\Http\Controllers\ScouringController;
 use App\Http\Controllers\TripController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WaitingListController;
+use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('api')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/logout', [AuthController::class, 'logout']);
+        Route::get('/profile', [AuthController::class, 'profile']);
+    });
+
     Route::get('users', [UserController::class, 'index']);
     Route::get('users/{user}', [UserController::class, 'show']);
     Route::post('users', [UserController::class, 'store']);
@@ -98,4 +106,3 @@ Route::middleware('api')->group(function () {
     Route::put('scourings/{scouring}', [ScouringController::class, 'update']);
     Route::patch('scourings/{scouring}', [ScouringController::class, 'update']);
     Route::delete('scourings/{scouring}', [ScouringController::class, 'destroy']);
-});
