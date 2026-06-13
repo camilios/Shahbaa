@@ -14,12 +14,17 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\WaitingListController;
 use Illuminate\Support\Facades\Route;
 
+
+
+
 Route::middleware('api')->group(function () {
     Route::get('users', [UserController::class, 'index']);
     Route::get('users/{user}', [UserController::class, 'show']);
     Route::post('users', [UserController::class, 'store']);
     Route::put('users/{user}', [UserController::class, 'update']);
-    Route::patch('users/{user}', [UserController::class, 'update']);
+    Route::post('update_profile', [UserController::class, 'update_profile']);
+    Route::post('profile', [UserController::class, 'profile']);
+    Route::post('qr', [UserController::class, 'Qr']);
     Route::delete('users/{user}', [UserController::class, 'destroy']);
 
     Route::get('roles', [RoleController::class, 'index']);
@@ -45,14 +50,13 @@ Route::middleware('api')->group(function () {
 
     Route::get('bookings', [BookingController::class, 'index']);
     Route::get('bookings/{booking}', [BookingController::class, 'show']);
-    Route::post('bookings', [BookingController::class, 'store']);
-    Route::put('bookings/{booking}', [BookingController::class, 'update']);
-    Route::patch('bookings/{booking}', [BookingController::class, 'update']);
-    Route::delete('bookings/{booking}', [BookingController::class, 'destroy']);
+    Route::post('storebooking', [BookingController::class, 'store']);
+    Route::post('/updatebooking', [BookingController::class, 'update']);
+    Route::delete('/deletebooking/{booking}', [BookingController::class, 'destroy']);
 
     Route::get('ratings', [RatingController::class, 'index']);
     Route::get('ratings/{rating}', [RatingController::class, 'show']);
-    Route::post('ratings', [RatingController::class, 'store']);
+    Route::put('ratings', [RatingController::class, 'store']);
     Route::put('ratings/{rating}', [RatingController::class, 'update']);
     Route::patch('ratings/{rating}', [RatingController::class, 'update']);
     Route::delete('ratings/{rating}', [RatingController::class, 'destroy']);
