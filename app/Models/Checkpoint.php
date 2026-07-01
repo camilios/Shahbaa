@@ -15,7 +15,7 @@ class Checkpoint extends Model
     protected $fillable = [
         'name',
         'location',
-        'governorate',
+        'c',
     ];
 
     public function tripCheckpoints()

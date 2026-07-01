@@ -53,7 +53,11 @@ Route::middleware('api')->group(function () {
     Route::get('bookings/{booking}', [BookingController::class, 'show']);
     Route::post('storebooking', [BookingController::class, 'store']);
     Route::post('/updatebooking', [BookingController::class, 'update']);
+    Route::post('/index_trip_time', [BookingController::class, 'index_trip_time']);
+    Route::post('/Index_droppoff', [BookingController::class, 'Index_droppoff']);
+    Route::post('/Index_pickup', [BookingController::class, 'Index_pickup']);
     Route::delete('/deletebooking/{booking}', [BookingController::class, 'destroy']);
+
 
     Route::get('ratings', [RatingController::class, 'index']);
     Route::get('ratings/{rating}', [RatingController::class, 'show']);

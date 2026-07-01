@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\BookingRequest;
 use App\Models\Booking;
+use App\Models\Checkpoint;
 use App\Models\Trip;
+use App\Models\TripCheckpoint;
 use Carbon\Carbon;
+use Carbon\Traits\Date as TraitsDate;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 
 class BookingController extends Controller
@@ -171,5 +175,43 @@ class BookingController extends Controller
 
          return response()->noContent();
         });
+    }
+
+
+    // public function index_trip(Request $request)
+    // {
+    //  TripCheckpoint::insert([
+    //     'trip_id' => $request->trip_id,
+    //     'checkpoint_id' => $request->checkpoint_id,
+    //     'description' => $request->description,
+    //  ]);
+    // }
+
+    public function index_trip_time(Request $request)
+    {
+        $trip = Trip::all();
+
+        $loc = Checkpoint::where('governorate' , $request->governorate)->value('id');
+        $chec_loc = TripCheckpoint::where('checkpoint_id' , $loc)->pluck('trip_id');
+        $trip_time = Trip::whereIn('id',$chec_loc)->whereDate('departure_date' , $request->time)->get();
+        return response()->json($trip_time);
+    }
+
+    public function Index_droppoff (Request $request)
+    {
+      
+        
+        $dropoff = Checkpoint::where('governorate' , $request->governorate)->get('name');
+
+        return response()->json(['dropoff'=>$dropoff]);
+    }
+
+        public function Index_pickup (Request $request)
+    {
+      
+        
+        $pickup = Checkpoint::where('governorate' , $request->governorate)->get('location');
+
+        return response()->json(['pickup'=>$pickup]);
     }
 }

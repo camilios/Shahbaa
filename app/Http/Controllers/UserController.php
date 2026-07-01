@@ -125,7 +125,7 @@ $validate = Validator::make($request->all(),
         }
 
 
-        return response()->json(['name' => $user->name  ,'email' => $user->email , 'gender'=> $user->gender ,'phone'=> $user->phone]);
+        return response()->json(['name' => $user->name  ,'email' => $user->email , 'national_number'=> $user->national_number ,'phone'=> $user->phone]);
     }
 
 
