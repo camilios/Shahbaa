@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Str;
-
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -57,99 +57,93 @@ class UserController extends Controller
 
     public function update_profile(Request $request)
     {
-
-        $users = User::find($request->id);
-        if (! $request->id || ! $users) {
+        /**@var \App\Models\User $users */
+        $users = auth('sanctum')->user();
+        if (! $users) {
             return response()->json(['message' => 'User not found.'], 404);
         }
-$validate = Validator::make($request->all(),
-    [
-        'password' => [
-            'nullable',
-            'string',
-            Password::min(10)
-                ->letters()
-                ->numbers()
-                ->symbols(),
+        $validate = Validator::make(
+            $request->all(),
+            [
+                'email' => [
+                    'nullable',
+                    'email',
+                    'ends_with:gmail.com',
+                    Rule::unique('users', 'email')->ignore($users->id)
+                ],
+                'phone' => [
+                    'nullable',
+                    'regex:/^09639[0-9]{8}$/',
+                    Rule::unique('users', 'phone')->ignore($users->id)
+                ],
+                'password' => [
+                    'nullable',
+                    'string',
+                    \Illuminate\Validation\Rules\Password::min(10)->letters()->numbers()->symbols(),
+
+                ],
+            ],
+            [
+                'email.unique' => 'The email has already been taken.',
+                'email.ends_with' => 'The email must end with @gmail.com.',
+                'phone.regex' => 'The phone number format is invalid. It should start with 09639 followed by 8 digits.',
+                'phone.unique' => 'The phone number has already been taken.',
+            ]
+        );
 
 
-                      ],
-        'email' => 'nullable|email|unique:users,email|ends_with:gmail.com',
-        'phone' => 'nullable|regex:/^09639[0-9]{8}$/|unique:users,phone',
-    ],
-    [
-        'email.unique' => 'The email has already been taken.',
-        'email.ends_with' => 'The email must end with @gmail.com.',
-        'phone.regex' => 'The phone number format is invalid. It should start with 09639 followed by 8 digits.',
-        'phone.unique' => 'The phone number has already been taken.',
-    ]
-);
 
-
-
-          if($validate->fails()){
-          return response()->json($validate->errors(),400);
-         }
-
-        if($request->email == $users->email || $request->email == null){
-            return response()->json(['message' => 'Email already exists.' ,'email' => $users->email], 422);
+        if ($validate->fails()) {
+            return response()->json($validate->errors(), 400);
         }
-        else {
-           $users->email = $request->email;
 
-             if($request->phone != null){
-                $users->phone = $request->phone;
-            }
-
-             if($request->password != null )
-                {
-                    $users->password = Crypt::encrypt($request->password);
-
-                }
+        if ($request->filled('email')) {
+            $users->email = $request->email;
+        }
+        if ($request->filled('phone')) {
+            $users->phone = $request->phone;
+        }
+        if ($request->filled('password')) {
+            $users->password = Crypt::encrypt($request->password);
+        }
 
 
-            }
-
-
-       $users->save();
-       return response()->json(['message' => 'Profile updated successfully.']);
-
+        $users->save();
+        return response()->json(['message' => 'Profile updated successfully.']);
     }
 
 
     public function profile(Request $request)
     {
-        $user = User::find($request->id);
+        $user = auth('sanctum')->user();
         if (! $user) {
             return response()->json(['message' => 'User not found.'], 404);
         }
 
 
-        return response()->json(['name' => $user->name  ,'email' => $user->email , 'national_number'=> $user->national_number ,'phone'=> $user->phone]);
+        return response()->json(['full_name' => $user->full_name, 'mother_name' => $user->mother_name, 'email' => $user->email, 'national_number' => $user->national_number, 'phone' => $user->phone]);
     }
 
 
 
 
 
-  public function Qr(Request $request)
-{
+    public function Qr(Request $request)
+    {
 
-    $user = User::find($request->id);
-
-
-
-     $user->qr_token = Str::uuid();
-     $user->save();
+        $user = User::find($request->id);
 
 
 
-    $qr = QrCode::size(300)->generate($user->qr_token,);
+        $user->qr_token = Str::uuid();
+        $user->save();
 
-    return response()->json([
-        'qr' => $qr,
-    ]);
 
+
+        $qr = QrCode::size(300)->generate($user->qr_token,);
+
+        return response()->json([
+            'qr' => $qr,
+        ]);
     }
 }
-

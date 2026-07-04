@@ -19,12 +19,15 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::middleware('api')->group(function () {
+
+    Route::post('login', [AuthController::class, 'login']);
+    Route::post('register', [AuthController::class, 'register']);
     Route::get('users', [UserController::class, 'index']);
     Route::get('users/{user}', [UserController::class, 'show']);
     Route::post('users', [UserController::class, 'store']);
     Route::put('users/{user}', [UserController::class, 'update']);
     Route::post('update_profile', [UserController::class, 'update_profile']);
-    Route::post('profile', [UserController::class, 'profile']);
+    Route::get('profile', [UserController::class, 'profile']);
     Route::post('qr', [UserController::class, 'Qr']);
     Route::delete('users/{user}', [UserController::class, 'destroy']);
 
