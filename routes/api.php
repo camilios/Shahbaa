@@ -13,12 +13,40 @@ use App\Http\Controllers\TripController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WaitingListController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DriverAuthController;
+use App\Http\Controllers\DriverTripCheckpointController;
+use App\Http\Controllers\DriverTripController;
+use App\Http\Controllers\DriverTripObjectionController;
+use App\Http\Controllers\DriverTripPassengerController;
 use Illuminate\Support\Facades\Route;
 
 
 
 
 Route::middleware('api')->group(function () {
+    // Driver app auth: login only (no self-registration), logout, profile.
+    Route::post('driver/login', [DriverAuthController::class, 'login']);
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('driver/logout', [DriverAuthController::class, 'logout']);
+        Route::get('driver/profile', [DriverAuthController::class, 'profile']);
+
+        // Trip schedules list + trip details (scoped to the driver's own trips).
+        Route::get('driver/trips', [DriverTripController::class, 'index']);
+        Route::get('driver/trips/{trip}', [DriverTripController::class, 'show']);
+
+        // Trip location tracking: driver checks in at route checkpoints so
+        // the admin can follow where the trip has reached.
+        Route::get('driver/trips/{trip}/checkpoints', [DriverTripCheckpointController::class, 'index']);
+        Route::post('driver/trips/{trip}/checkpoints', [DriverTripCheckpointController::class, 'store']);
+
+        // Passenger names booked on the driver's trip.
+        Route::get('driver/trips/{trip}/passengers', [DriverTripPassengerController::class, 'index']);
+
+        // Driver files an objection against a trip's schedule (with a reason).
+        Route::get('driver/trips/{trip}/objections', [DriverTripObjectionController::class, 'index']);
+        Route::post('driver/trips/{trip}/objections', [DriverTripObjectionController::class, 'store']);
+    });
+
     Route::get('users', [UserController::class, 'index']);
     Route::get('users/{user}', [UserController::class, 'show']);
     Route::post('users', [UserController::class, 'store']);

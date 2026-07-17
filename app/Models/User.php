@@ -61,6 +61,14 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class);
     }
 
+    /**
+     * Determine whether the user is a driver.
+     */
+    public function isDriver(): bool
+    {
+        return $this->role && strtolower($this->role->name) === 'driver';
+    }
+
     public function trips()
     {
         return $this->hasMany(Trip::class, 'driver_id');
