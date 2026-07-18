@@ -18,7 +18,15 @@ class Booking extends Model
         'dropoff_checkpoint_id',
         'seats_count',
         'status',
+        'boarded_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'boarded_at' => 'datetime',
+        ];
+    }
 
     public function user()
     {

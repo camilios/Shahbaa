@@ -18,6 +18,7 @@ use App\Http\Controllers\DriverTripCheckpointController;
 use App\Http\Controllers\DriverTripController;
 use App\Http\Controllers\DriverTripObjectionController;
 use App\Http\Controllers\DriverTripPassengerController;
+use App\Http\Controllers\DriverTripScanController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -45,6 +46,10 @@ Route::middleware('api')->group(function () {
         // Driver files an objection against a trip's schedule (with a reason).
         Route::get('driver/trips/{trip}/objections', [DriverTripObjectionController::class, 'index']);
         Route::post('driver/trips/{trip}/objections', [DriverTripObjectionController::class, 'store']);
+
+        // Driver scans a passenger's QR ticket to verify the booking and
+        // mark the passenger as boarded.
+        Route::post('driver/trips/{trip}/scan', [DriverTripScanController::class, 'store']);
     });
 
     Route::get('users', [UserController::class, 'index']);

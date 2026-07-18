@@ -36,6 +36,8 @@ class DriverTripPassengerController extends Controller
             'phone' => $booking->user?->phone,
             'seats_count' => $booking->seats_count,
             'status' => $booking->status,
+            'boarded' => $booking->boarded_at !== null,
+            'boarded_at' => $booking->boarded_at,
             'pickup' => $booking->pickupCheckpoint?->name,
             'dropoff' => $booking->dropoffCheckpoint?->name,
         ]);
