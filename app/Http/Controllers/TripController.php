@@ -4,9 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\TripRequest;
 use App\Models\Trip;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Validator;
 
 class TripController extends Controller
 {
@@ -38,41 +35,4 @@ class TripController extends Controller
 
         return response()->noContent();
     }
-
-    public function create (Request $request)
-    {
-       $validate =Validator::make($request->all(), [
-        'type' => 'required',
-        'point_price' => 'required',
-        'money_price' => 'required',
-        'status' => 'required',
-        'departure_date' => 'required',
-        'arrival_date' => 'required',
-        'total_seats' => 'required',
-        'available_seats' => 'required',
-        'earned_points' => 'required',
-       ]);
-
-        if($validate->fails()){
-            return response()->json($validate->errors(),400);
-        }
-
-        $trip = Trip::create([
-        'driver_id' => $request->driver_id,
-        'type' => $request->type,
-        'point_price' => 'required',
-        'money_price' => 'required',
-        'status' => 'required',
-        'departure_date' => 'required',
-        'arrival_date' => 'required',
-        'total_seats' => 'required',
-        'available_seats' => 'required',
-        'earned_points' => 'required',
-        ]);
-
-    }
-
-    }
-
-
-
+}
