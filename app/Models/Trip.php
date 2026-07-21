@@ -68,4 +68,9 @@ class Trip extends Model
     {
         return $this->hasMany(DriverCheckpointLog::class);
     }
+
+    public function objections()
+    {
+        return $this->hasMany(TripObjection::class);
+    }
 }

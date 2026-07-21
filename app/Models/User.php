@@ -7,11 +7,12 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -54,6 +55,14 @@ class User extends Authenticatable
     public function roles()
     {
         return $this->hasMany(Role::class);
+    }
+
+    /**
+     * Determine whether the user is a driver.
+     */
+    public function isDriver(): bool
+    {
+        return strtolower((string) $this->role) === 'driver';
     }
 
     public function trips()
