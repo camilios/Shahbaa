@@ -47,7 +47,7 @@ class DriverTripScanController extends Controller
                 'message' => 'This passenger is not booked on this trip.',
                 'passenger' => [
                     'id' => $passenger->id,
-                    'name' => $passenger->full_name,
+                    'name' => $passenger->name,
                 ],
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -65,7 +65,7 @@ class DriverTripScanController extends Controller
             'passenger' => [
                 'booking_id' => $booking->id,
                 'id' => $passenger->id,
-                'name' => $passenger->full_name,
+                'name' => $passenger->name,
                 'phone' => $passenger->phone,
                 'seats_count' => $booking->seats_count,
                 'boarded_at' => $booking->boarded_at,
