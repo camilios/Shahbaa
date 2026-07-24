@@ -12,6 +12,9 @@ class WaitingList extends Model
     protected $fillable = [
         'user_id',
         'trip_id',
+        'pickup_checkpoint_id',
+        'dropoff_checkpoint_id',
+        'seats_count',
         'status',
     ];
 
@@ -23,5 +26,15 @@ class WaitingList extends Model
     public function trip()
     {
         return $this->belongsTo(Trip::class);
+    }
+
+    public function pickupCheckpoint()
+    {
+        return $this->belongsTo(Checkpoint::class, 'pickup_checkpoint_id');
+    }
+
+    public function dropoffCheckpoint()
+    {
+        return $this->belongsTo(Checkpoint::class, 'dropoff_checkpoint_id');
     }
 }
