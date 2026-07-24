@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CheckpointController;
 use App\Http\Controllers\ComplaintController;
@@ -14,6 +14,7 @@ use App\Http\Controllers\DriverTripPassengerController;
 use App\Http\Controllers\DriverTripScanController;
 use App\Http\Controllers\PrivateTripRequestController;
 use App\Http\Controllers\RatingController;
+use App\Http\Controllers\RealtimeTrackingAuthorizationController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ScouringController;
 use App\Http\Controllers\TripController;
@@ -22,9 +23,17 @@ use App\Http\Controllers\WaitingListController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('api')->group(function () {
+    // Admin dashboard auth: login and token-scoped logout.
+    Route::post('admin/login', [AdminAuthController::class, 'login']);
+
     // Driver app auth: login only (no self-registration), logout, profile.
     Route::post('driver/login', [DriverAuthController::class, 'login']);
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'active'])->group(function () {
+        Route::post('admin/logout', [AdminAuthController::class, 'logout']);
+
+        Route::post('v1/realtime/authorize', RealtimeTrackingAuthorizationController::class)
+            ->middleware('tracking.service');
+
         Route::post('driver/logout', [DriverAuthController::class, 'logout']);
         Route::get('driver/profile', [DriverAuthController::class, 'profile']);
 
@@ -48,88 +57,100 @@ Route::middleware('api')->group(function () {
         // mark the passenger as boarded.
         Route::post('driver/trips/{trip}/scan', [DriverTripScanController::class, 'store']);
     });
+    Route::patch('users/{user}/unblock', [UserController::class, 'unblock']);
 
-    Route::get('users', [UserController::class, 'index']);
-    Route::get('users/{user}', [UserController::class, 'show']);
-    Route::post('users', [UserController::class, 'store']);
-    Route::put('users/{user}', [UserController::class, 'update']);
-    Route::patch('users/{user}', [UserController::class, 'update']);
-    Route::delete('users/{user}', [UserController::class, 'destroy']);
+    Route::middleware(['auth:sanctum', 'active'])->group(function () {
+        Route::middleware('admin')->group(function () {
+            Route::get('drivers', [UserController::class, 'drivers']);
+            Route::patch('users/{user}/block', [UserController::class, 'block']);
+            Route::post('ratings/{rating}/reply', [RatingController::class, 'reply']);
+            Route::post('complaints/{complaint}/reply', [ComplaintController::class, 'reply']);
+            Route::post('private-trip-requests/{private_trip_request}/approve', [PrivateTripRequestController::class, 'approve']);
+            Route::post('private-trip-requests/{private_trip_request}/reject', [PrivateTripRequestController::class, 'reject']);
+        });
 
-    Route::get('roles', [RoleController::class, 'index']);
-    Route::get('roles/{role}', [RoleController::class, 'show']);
-    Route::post('roles', [RoleController::class, 'store']);
-    Route::put('roles/{role}', [RoleController::class, 'update']);
-    Route::patch('roles/{role}', [RoleController::class, 'update']);
-    Route::delete('roles/{role}', [RoleController::class, 'destroy']);
+        Route::get('users', [UserController::class, 'index']);
+        Route::get('users/{user}', [UserController::class, 'show']);
+        Route::post('users', [UserController::class, 'store'])->middleware('admin');
+        Route::put('users/{user}', [UserController::class, 'update'])->middleware('admin');
+        Route::patch('users/{user}', [UserController::class, 'update'])->middleware('admin');
+        Route::delete('users/{user}', [UserController::class, 'destroy'])->middleware('admin');
 
-    Route::get('trips', [TripController::class, 'index']);
-    Route::get('trips/{trip}', [TripController::class, 'show']);
-    Route::post('trips', [TripController::class, 'store']);
-    Route::put('trips/{trip}', [TripController::class, 'update']);
-    Route::patch('trips/{trip}', [TripController::class, 'update']);
-    Route::delete('trips/{trip}', [TripController::class, 'destroy']);
+        Route::get('roles', [RoleController::class, 'index']);
+        Route::get('roles/{role}', [RoleController::class, 'show']);
+        Route::post('roles', [RoleController::class, 'store']);
+        Route::put('roles/{role}', [RoleController::class, 'update']);
+        Route::patch('roles/{role}', [RoleController::class, 'update']);
+        Route::delete('roles/{role}', [RoleController::class, 'destroy']);
 
-    Route::get('checkpoints', [CheckpointController::class, 'index']);
-    Route::get('checkpoints/{checkpoint}', [CheckpointController::class, 'show']);
-    Route::post('checkpoints', [CheckpointController::class, 'store']);
-    Route::put('checkpoints/{checkpoint}', [CheckpointController::class, 'update']);
-    Route::patch('checkpoints/{checkpoint}', [CheckpointController::class, 'update']);
-    Route::delete('checkpoints/{checkpoint}', [CheckpointController::class, 'destroy']);
+        Route::get('trips', [TripController::class, 'index']);
+        Route::get('trips/{trip}', [TripController::class, 'show']);
+        Route::post('trips', [TripController::class, 'store'])->middleware('admin');
+        Route::put('trips/{trip}', [TripController::class, 'update'])->middleware('admin');
+        Route::patch('trips/{trip}', [TripController::class, 'update'])->middleware('admin');
+        Route::delete('trips/{trip}', [TripController::class, 'destroy'])->middleware('admin');
 
-    Route::get('bookings', [BookingController::class, 'index']);
-    Route::get('bookings/{booking}', [BookingController::class, 'show']);
-    Route::post('bookings', [BookingController::class, 'store']);
-    Route::put('bookings/{booking}', [BookingController::class, 'update']);
-    Route::patch('bookings/{booking}', [BookingController::class, 'update']);
-    Route::delete('bookings/{booking}', [BookingController::class, 'destroy']);
+        Route::get('checkpoints', [CheckpointController::class, 'index']);
+        Route::get('checkpoints/{checkpoint}', [CheckpointController::class, 'show']);
+        Route::post('checkpoints', [CheckpointController::class, 'store'])->middleware('admin');
+        Route::put('checkpoints/{checkpoint}', [CheckpointController::class, 'update'])->middleware('admin');
+        Route::patch('checkpoints/{checkpoint}', [CheckpointController::class, 'update'])->middleware('admin');
+        Route::delete('checkpoints/{checkpoint}', [CheckpointController::class, 'destroy'])->middleware('admin');
 
-    Route::get('ratings', [RatingController::class, 'index']);
-    Route::get('ratings/{rating}', [RatingController::class, 'show']);
-    Route::post('ratings', [RatingController::class, 'store']);
-    Route::put('ratings/{rating}', [RatingController::class, 'update']);
-    Route::patch('ratings/{rating}', [RatingController::class, 'update']);
-    Route::delete('ratings/{rating}', [RatingController::class, 'destroy']);
+        Route::get('bookings', [BookingController::class, 'index']);
+        Route::get('bookings/{booking}', [BookingController::class, 'show']);
+        Route::post('bookings', [BookingController::class, 'store']);
+        Route::put('bookings/{booking}', [BookingController::class, 'update']);
+        Route::patch('bookings/{booking}', [BookingController::class, 'update']);
+        Route::delete('bookings/{booking}', [BookingController::class, 'destroy']);
 
-    Route::get('complaints', [ComplaintController::class, 'index']);
-    Route::get('complaints/{complaint}', [ComplaintController::class, 'show']);
-    Route::post('complaints', [ComplaintController::class, 'store']);
-    Route::put('complaints/{complaint}', [ComplaintController::class, 'update']);
-    Route::patch('complaints/{complaint}', [ComplaintController::class, 'update']);
-    Route::delete('complaints/{complaint}', [ComplaintController::class, 'destroy']);
+        Route::get('ratings', [RatingController::class, 'index']);
+        Route::get('ratings/{rating}', [RatingController::class, 'show']);
+        Route::post('ratings', [RatingController::class, 'store']);
+        Route::put('ratings/{rating}', [RatingController::class, 'update']);
+        Route::patch('ratings/{rating}', [RatingController::class, 'update']);
+        Route::delete('ratings/{rating}', [RatingController::class, 'destroy']);
 
-    Route::get('private-trip-requests', [PrivateTripRequestController::class, 'index']);
-    Route::get('private-trip-requests/{private_trip_request}', [PrivateTripRequestController::class, 'show']);
-    Route::post('private-trip-requests', [PrivateTripRequestController::class, 'store']);
-    Route::put('private-trip-requests/{private_trip_request}', [PrivateTripRequestController::class, 'update']);
-    Route::patch('private-trip-requests/{private_trip_request}', [PrivateTripRequestController::class, 'update']);
-    Route::delete('private-trip-requests/{private_trip_request}', [PrivateTripRequestController::class, 'destroy']);
+        Route::get('complaints', [ComplaintController::class, 'index']);
+        Route::get('complaints/{complaint}', [ComplaintController::class, 'show']);
+        Route::post('complaints', [ComplaintController::class, 'store']);
+        Route::put('complaints/{complaint}', [ComplaintController::class, 'update']);
+        Route::patch('complaints/{complaint}', [ComplaintController::class, 'update']);
+        Route::delete('complaints/{complaint}', [ComplaintController::class, 'destroy']);
 
-    Route::get('waiting-lists', [WaitingListController::class, 'index']);
-    Route::get('waiting-lists/{waiting_list}', [WaitingListController::class, 'show']);
-    Route::post('waiting-lists', [WaitingListController::class, 'store']);
-    Route::put('waiting-lists/{waiting_list}', [WaitingListController::class, 'update']);
-    Route::patch('waiting-lists/{waiting_list}', [WaitingListController::class, 'update']);
-    Route::delete('waiting-lists/{waiting_list}', [WaitingListController::class, 'destroy']);
+        Route::get('private-trip-requests', [PrivateTripRequestController::class, 'index']);
+        Route::get('private-trip-requests/{private_trip_request}', [PrivateTripRequestController::class, 'show']);
+        Route::post('private-trip-requests', [PrivateTripRequestController::class, 'store']);
+        Route::put('private-trip-requests/{private_trip_request}', [PrivateTripRequestController::class, 'update']);
+        Route::patch('private-trip-requests/{private_trip_request}', [PrivateTripRequestController::class, 'update']);
+        Route::delete('private-trip-requests/{private_trip_request}', [PrivateTripRequestController::class, 'destroy']);
 
-    Route::get('driver-requests', [DriverRequestController::class, 'index']);
-    Route::get('driver-requests/{driver_request}', [DriverRequestController::class, 'show']);
-    Route::post('driver-requests', [DriverRequestController::class, 'store']);
-    Route::put('driver-requests/{driver_request}', [DriverRequestController::class, 'update']);
-    Route::patch('driver-requests/{driver_request}', [DriverRequestController::class, 'update']);
-    Route::delete('driver-requests/{driver_request}', [DriverRequestController::class, 'destroy']);
+        Route::get('waiting-lists', [WaitingListController::class, 'index']);
+        Route::get('waiting-lists/{waiting_list}', [WaitingListController::class, 'show']);
+        Route::post('waiting-lists', [WaitingListController::class, 'store']);
+        Route::put('waiting-lists/{waiting_list}', [WaitingListController::class, 'update']);
+        Route::patch('waiting-lists/{waiting_list}', [WaitingListController::class, 'update']);
+        Route::delete('waiting-lists/{waiting_list}', [WaitingListController::class, 'destroy']);
 
-    Route::get('driver-checkpoint-logs', [DriverCheckpointLogController::class, 'index']);
-    Route::get('driver-checkpoint-logs/{driver_checkpoint_log}', [DriverCheckpointLogController::class, 'show']);
-    Route::post('driver-checkpoint-logs', [DriverCheckpointLogController::class, 'store']);
-    Route::put('driver-checkpoint-logs/{driver_checkpoint_log}', [DriverCheckpointLogController::class, 'update']);
-    Route::patch('driver-checkpoint-logs/{driver_checkpoint_log}', [DriverCheckpointLogController::class, 'update']);
-    Route::delete('driver-checkpoint-logs/{driver_checkpoint_log}', [DriverCheckpointLogController::class, 'destroy']);
+        Route::get('driver-requests', [DriverRequestController::class, 'index']);
+        Route::get('driver-requests/{driver_request}', [DriverRequestController::class, 'show']);
+        Route::post('driver-requests', [DriverRequestController::class, 'store']);
+        Route::put('driver-requests/{driver_request}', [DriverRequestController::class, 'update']);
+        Route::patch('driver-requests/{driver_request}', [DriverRequestController::class, 'update']);
+        Route::delete('driver-requests/{driver_request}', [DriverRequestController::class, 'destroy']);
 
-    Route::get('scourings', [ScouringController::class, 'index']);
-    Route::get('scourings/{scouring}', [ScouringController::class, 'show']);
-    Route::post('scourings', [ScouringController::class, 'store']);
-    Route::put('scourings/{scouring}', [ScouringController::class, 'update']);
-    Route::patch('scourings/{scouring}', [ScouringController::class, 'update']);
-    Route::delete('scourings/{scouring}', [ScouringController::class, 'destroy']);
+        Route::get('driver-checkpoint-logs', [DriverCheckpointLogController::class, 'index']);
+        Route::get('driver-checkpoint-logs/{driver_checkpoint_log}', [DriverCheckpointLogController::class, 'show']);
+        Route::post('driver-checkpoint-logs', [DriverCheckpointLogController::class, 'store']);
+        Route::put('driver-checkpoint-logs/{driver_checkpoint_log}', [DriverCheckpointLogController::class, 'update']);
+        Route::patch('driver-checkpoint-logs/{driver_checkpoint_log}', [DriverCheckpointLogController::class, 'update']);
+        Route::delete('driver-checkpoint-logs/{driver_checkpoint_log}', [DriverCheckpointLogController::class, 'destroy']);
+
+        Route::get('scourings', [ScouringController::class, 'index']);
+        Route::get('scourings/{scouring}', [ScouringController::class, 'show']);
+        Route::post('scourings', [ScouringController::class, 'store']);
+        Route::put('scourings/{scouring}', [ScouringController::class, 'update']);
+        Route::patch('scourings/{scouring}', [ScouringController::class, 'update']);
+        Route::delete('scourings/{scouring}', [ScouringController::class, 'destroy']);
+    });
 });

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Scouring;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -56,5 +55,10 @@ class Booking extends Model
     public function scouring()
     {
         return $this->hasOne(Scouring::class);
+    }
+
+    public function seats()
+    {
+        return $this->hasMany(Seat::class);
     }
 }

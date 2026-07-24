@@ -24,6 +24,8 @@ class User extends Authenticatable
         'email',
         'password',
         'phone',
+        'national_number',
+        'father_name',
         'gender',
         'role',
         'status',
@@ -63,6 +65,14 @@ class User extends Authenticatable
     public function isDriver(): bool
     {
         return strtolower((string) $this->role) === 'driver';
+    }
+
+    /**
+     * Determine whether the user may use administrative features.
+     */
+    public function isAdmin(): bool
+    {
+        return strtolower((string) $this->role) === 'admin';
     }
 
     public function trips()
