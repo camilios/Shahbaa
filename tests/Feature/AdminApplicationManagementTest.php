@@ -161,6 +161,100 @@ class AdminApplicationManagementTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('seats_count');
     }
 
+    public function test_customer_is_automatically_added_to_waiting_list_when_trip_is_full(): void
+    {
+        Sanctum::actingAs($this->user('customer'));
+        $customer = auth()->user();
+        $driver = $this->user('driver');
+        [$from, $to] = $this->checkpoints();
+        $trip = $this->trip($driver, [$from, $to], 1);
+
+        $payload = [
+            'trip_id' => $trip->id,
+            'pickup_checkpoint_id' => $from->id,
+            'dropoff_checkpoint_id' => $to->id,
+            'seats_count' => 1,
+        ];
+
+        $this->postJson('/api/bookings', $payload)->assertCreated();
+
+        $this->postJson('/api/bookings', $payload)
+            ->assertCreated()
+            ->assertJsonPath('waiting_list.user_id', $customer->id)
+            ->assertJsonPath('waiting_list.trip_id', $trip->id)
+            ->assertJsonPath('waiting_list.status', 'pending')
+            ->assertJsonPath('waiting_list.user.id', $customer->id);
+
+        $this->postJson('/api/bookings', $payload)->assertCreated();
+
+        $this->assertDatabaseCount('bookings', 1);
+        $this->assertDatabaseCount('waiting_lists', 1);
+        $this->assertSame(0, $trip->fresh()->available_seats);
+    }
+
+    public function test_thirty_waiting_customers_are_booked_on_an_automatically_created_trip(): void
+    {
+        $driver = $this->user('driver');
+        [$from, $to] = $this->checkpoints();
+        $trip = $this->trip($driver, [$from, $to], 50);
+        $existingBooking = Booking::create([
+            'user_id' => $this->user('customer')->id,
+            'driver_id' => $driver->id,
+            'trip_id' => $trip->id,
+            'pickup_checkpoint_id' => $from->id,
+            'dropoff_checkpoint_id' => $to->id,
+            'seats_count' => 50,
+        ]);
+        $trip->seats()->update(['booking_id' => $existingBooking->id]);
+        $trip->update(['available_seats' => 0]);
+
+        $lastResponse = null;
+        foreach (User::factory()->count(30)->create(['role' => 'customer', 'status' => 'active']) as $customer) {
+            Sanctum::actingAs($customer);
+            $lastResponse = $this->postJson('/api/bookings', [
+                'trip_id' => $trip->id,
+                'pickup_checkpoint_id' => $from->id,
+                'dropoff_checkpoint_id' => $to->id,
+                'seats_count' => 1,
+            ])->assertCreated();
+        }
+
+        $newTripId = $lastResponse->json('new_trip.id');
+        $this->assertNotNull($newTripId);
+        $newTrip = Trip::findOrFail($newTripId);
+
+        $this->assertSame($trip->driver_id, $newTrip->driver_id);
+        $this->assertSame($trip->type, $newTrip->type);
+        $this->assertSame($trip->total_seats, $newTrip->total_seats);
+        $this->assertSame(20, $newTrip->available_seats);
+        $this->assertSame(30, $newTrip->bookings()->count());
+        $this->assertSame(30, $newTrip->bookedSeats()->count());
+        $this->assertEquals(
+            $trip->checkpoints()->pluck('checkpoint_id')->all(),
+            $newTrip->checkpoints()->pluck('checkpoint_id')->all(),
+        );
+        $this->assertDatabaseMissing('waiting_lists', ['trip_id' => $trip->id]);
+    }
+
+    public function test_manual_waiting_list_entry_is_wired_with_booking_details(): void
+    {
+        Sanctum::actingAs($this->user('admin'));
+        $customer = $this->user('customer');
+        [$from, $to] = $this->checkpoints();
+        $trip = $this->trip($this->user('driver'), [$from, $to], 50);
+
+        $this->postJson('/api/waiting-lists', [
+            'user_id' => $customer->id,
+            'trip_id' => $trip->id,
+            'status' => 'pending',
+        ])->assertCreated()
+            ->assertJsonPath('waiting_list.user_id', $customer->id)
+            ->assertJsonPath('waiting_list.pickup_checkpoint_id', $from->id)
+            ->assertJsonPath('waiting_list.dropoff_checkpoint_id', $to->id)
+            ->assertJsonPath('waiting_list.seats_count', 1)
+            ->assertJsonPath('new_trip', null);
+    }
+
     public function test_admin_can_book_for_a_selected_customer_and_driver_is_taken_from_trip(): void
     {
         Sanctum::actingAs($this->user('admin'));

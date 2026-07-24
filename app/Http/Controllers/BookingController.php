@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\BookingRequest;
 use App\Models\Booking;
 use App\Models\Trip;
+use App\Models\WaitingList;
+use App\Services\WaitingListPromotionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -20,9 +22,9 @@ class BookingController extends Controller
         return $booking->load(['user', 'driver', 'trip', 'pickupCheckpoint', 'dropoffCheckpoint', 'seats', 'scouring']);
     }
 
-    public function store(BookingRequest $request)
+    public function store(BookingRequest $request, WaitingListPromotionService $promotionService)
     {
-        return DB::transaction(function () use ($request) {
+        return DB::transaction(function () use ($request, $promotionService) {
             $data = $request->validated();
             $actor = $request->user();
             if (! $actor->isAdmin() && strtolower((string) $actor->role) !== 'customer') {
@@ -32,7 +34,32 @@ class BookingController extends Controller
             }
 
             $trip = Trip::query()->lockForUpdate()->findOrFail($data['trip_id']);
-            $this->validateBooking($trip, $data);
+            $this->validateBookingDetails($trip, $data);
+
+            $userId = $actor->isAdmin() ? $data['user_id'] : $actor->id;
+            if ($trip->available_seats === 0) {
+                $waitingList = WaitingList::firstOrCreate(
+                    ['user_id' => $userId, 'trip_id' => $trip->id],
+                    [
+                        'pickup_checkpoint_id' => $data['pickup_checkpoint_id'],
+                        'dropoff_checkpoint_id' => $data['dropoff_checkpoint_id'],
+                        'seats_count' => $data['seats_count'],
+                        'status' => 'pending',
+                    ],
+                );
+
+                $newTrip = $promotionService->promoteWhenReady($trip);
+
+                return response()->json([
+                    'message' => $newTrip
+                        ? 'A new trip has been created and the waiting customers have been booked on it.'
+                        : 'The trip is full. The customer has been added to the waiting list.',
+                    'waiting_list' => $newTrip ? null : $waitingList->load(['user', 'trip']),
+                    'new_trip' => $newTrip?->load(['driver', 'seats', 'checkpoints.checkpoint', 'bookings.user']),
+                ], 201);
+            }
+
+            $this->validateAvailableSeats($trip, $data);
 
             $seatNumbers = $data['seat_numbers'] ?? null;
             unset($data['seat_numbers']);
@@ -44,7 +71,7 @@ class BookingController extends Controller
                 throw ValidationException::withMessages(['seat_numbers' => ['One or more selected seats are no longer available.']]);
             }
 
-            $data['user_id'] = $actor->isAdmin() ? $data['user_id'] : $actor->id;
+            $data['user_id'] = $userId;
             $data['driver_id'] = $trip->driver_id;
             $booking = Booking::create($data);
             $trip->seats()->whereKey($seats->modelKeys())->update(['booking_id' => $booking->id]);
@@ -73,16 +100,12 @@ class BookingController extends Controller
         return response()->noContent();
     }
 
-    private function validateBooking(Trip $trip, array $data): void
+    private function validateBookingDetails(Trip $trip, array $data): void
     {
         if (isset($data['seat_numbers']) && count($data['seat_numbers']) !== $data['seats_count']) {
             throw ValidationException::withMessages([
                 'seat_numbers' => ['The selected seats must match the seat count.'],
             ]);
-        }
-
-        if ($trip->total_seats > 50 || $data['seats_count'] > $trip->available_seats) {
-            throw ValidationException::withMessages(['seats_count' => ['Not enough seats are available.']]);
         }
 
         $checkpointIds = $trip->checkpoints()->pluck('checkpoint_id');
@@ -92,4 +115,12 @@ class BookingController extends Controller
             ]);
         }
     }
+
+    private function validateAvailableSeats(Trip $trip, array $data): void
+    {
+        if ($trip->total_seats > 50 || $data['seats_count'] > $trip->available_seats) {
+            throw ValidationException::withMessages(['seats_count' => ['Not enough seats are available.']]);
+        }
+    }
+
 }
