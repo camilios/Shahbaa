@@ -62,7 +62,7 @@ class DriverTripController extends Controller
 
         $trip->load([
             'checkpoints.checkpoint',
-            'driver:id,full_name,phone',
+            'driver:id,name,phone',
             'bookings',
         ]);
 
@@ -107,7 +107,7 @@ class DriverTripController extends Controller
                 'route' => $route,
                 'driver' => [
                     'id' => $trip->driver?->id,
-                    'full_name' => $trip->driver?->full_name,
+                    'name' => $trip->driver?->name,
                     'phone' => $trip->driver?->phone,
                 ],
             ],
