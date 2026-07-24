@@ -14,7 +14,15 @@ class Rating extends Model
         'trip_id',
         'rate',
         'comment',
+        'admin_reply',
+        'replied_by',
+        'replied_at',
     ];
+
+    protected function casts(): array
+    {
+        return ['replied_at' => 'datetime'];
+    }
 
     public function customer()
     {
@@ -24,5 +32,10 @@ class Rating extends Model
     public function trip()
     {
         return $this->belongsTo(Trip::class);
+    }
+
+    public function repliedBy()
+    {
+        return $this->belongsTo(User::class, 'replied_by');
     }
 }
