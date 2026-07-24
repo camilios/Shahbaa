@@ -23,7 +23,7 @@ class DriverTripPassengerController extends Controller
         $bookings = $trip->bookings()
             ->where('status', '!=', 'cancelled')
             ->with([
-                'user:id,full_name,phone',
+                'user:id,name,phone',
                 'pickupCheckpoint:id,name',
                 'dropoffCheckpoint:id,name',
             ])
@@ -32,7 +32,7 @@ class DriverTripPassengerController extends Controller
         $passengers = $bookings->map(fn ($booking) => [
             'booking_id' => $booking->id,
             'user_id' => $booking->user_id,
-            'name' => $booking->user?->full_name,
+            'name' => $booking->user?->name,
             'phone' => $booking->user?->phone,
             'seats_count' => $booking->seats_count,
             'status' => $booking->status,
