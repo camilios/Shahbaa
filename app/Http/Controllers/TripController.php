@@ -7,8 +7,6 @@ use App\Models\Booking;
 use App\Models\Checkpoint;
 use App\Models\Seat;
 use App\Models\Trip;
-use App\Models\TripCheckpoint;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Validator;
@@ -17,24 +15,90 @@ class TripController extends Controller
 {
     public function index()
     {
-        return Trip::with(['driver', 'seats', 'checkpoints', 'ratings'])->paginate(20);
+        return Trip::with([
+            'driver',
+            'seats',
+            'checkpoints.checkpoint',
+            'ratings.repliedBy',
+        ])->paginate(20);
     }
 
     public function show(Trip $trip)
     {
-        return $trip->load(['driver', 'seats', 'checkpoints', 'ratings', 'waitingList']);
+        return $trip->load([
+            'driver',
+            'seats',
+            'bookedSeats',
+            'checkpoints.checkpoint',
+            'ratings.repliedBy',
+            'waitingList',
+        ]);
     }
 
     public function store(TripRequest $request)
     {
-        return Trip::create($request->validated());
+        return DB::transaction(function () use ($request) {
+            $data = $request->validated();
+            $checkpointIds = Arr::pull($data, 'checkpoint_ids');
+            unset($data['available_seats']);
+
+            $data['available_seats'] = $data['total_seats'];
+            $trip = Trip::create($data);
+
+            $this->replaceCheckpoints($trip, $checkpointIds);
+            $this->synchronizeSeats($trip, $trip->total_seats);
+
+            return $trip->load([
+                'driver',
+                'seats',
+                'checkpoints.checkpoint',
+            ]);
+        });
     }
 
     public function update(TripRequest $request, Trip $trip)
     {
-        $trip->update($request->validated());
+        return DB::transaction(function () use ($request, $trip) {
+            $data = $request->validated();
+            $checkpointIds = Arr::pull($data, 'checkpoint_ids');
+            unset($data['available_seats']);
 
-        return $trip;
+            if (isset($data['total_seats'])) {
+                $booked = $trip->seats()
+                    ->whereNotNull('booking_id')
+                    ->count();
+
+                if ($data['total_seats'] < $booked) {
+                    throw ValidationException::withMessages([
+                        'total_seats' => [
+                            'The seat count cannot be less than the number of booked seats.',
+                        ],
+                    ]);
+                }
+            }
+
+            $trip->update($data);
+
+            if ($checkpointIds !== null) {
+                $this->replaceCheckpoints($trip, $checkpointIds);
+            }
+
+            if (isset($data['total_seats'])) {
+                $this->synchronizeSeats($trip, $data['total_seats']);
+            }
+
+            $trip->update([
+                'available_seats' => $trip->seats()
+                    ->whereNull('booking_id')
+                    ->count(),
+            ]);
+
+            return $trip->load([
+                'driver',
+                'seats',
+                'checkpoints.checkpoint',
+            ]);
+        });
     }
 
     public function destroy(Trip $trip)
@@ -44,7 +108,7 @@ class TripController extends Controller
         return response()->noContent();
     }
 
-    public function create (Request $request)
+    private function replaceCheckpoints(Trip $trip, array $checkpointIds): void
     {
     //    $validate =Validator::make($request->all(), [
     //     'type' => 'required',
@@ -77,59 +141,7 @@ class TripController extends Controller
 
     }
 
-    public function scan_qr (Request $request)
-    {
-      $user = User::where('qr_token' , $request->qr)->value('id');
-      $book = Booking::where('user_id' , $user)->where('trip_id' , $request->trip_id)->value('status');
-      if ($book == 'pending') {
-          $id = Booking::where('user_id' , $user)->where('trip_id' , $request->trip_id)->value('id');
-           $id->status = 'completed';
-            $id->save();
-      }
-      return response()->json('he or she is booked in this trip' , 200);
     }
-
-       public function detailes (Request $request)
-     {
-
-
-     }
-
-     public function trip_checkpoint()
-     {
-
-     }
-
-       public function index_user_trip ()
-     {
-         $user = Auth::user()->id;
-         $book = Booking::where('user_id' , $user)->pluck('trip_id');
-         $trip = Trip::whereIn('id' , $book)->get('status','departure_date');
-         $chec_id = TripCheckpoint::whereIn('trip_id' , $book)->pluck('checkpoint_id');
-         $che = Checkpoint::whereIn('id' , $chec_id)->get();
-         $seats = Seat::whereIn('trip_id' , $book)->get();
-         return response()->json(['trip'=>$trip , 'checkpoints'=>$che , 'seats'=>$seats]);
-         
-
-
-     }
-
-     public function insert_trip_checkpoint(Request $request)
-     {
-        TripCheckpoint::insert([
-        'trip_id' => $request->trip_id,
-        'checkpoint_id' => $request->checkpoint_id,
-        'description' => $request->description,
-        ]);
-        return response()->json('checkpoint added successfully' , 200);
-     }
-
-      public function index_trip_checkpoint($trip_id , $pickup_checkpoint_id, $dropoff_checkpoint_id )
-        {
-     
-
-         }
-
 
 
 

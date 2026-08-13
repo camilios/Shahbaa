@@ -2,13 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Booking;
-use App\Models\DriverCheckpointLog;
-use App\Models\DriverRequest;
-use App\Models\Rating;
-use App\Models\Seat;
-use App\Models\TripCheckpoint;
-use App\Models\WaitingList;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -44,6 +37,11 @@ class Trip extends Model
         return $this->hasMany(Seat::class);
     }
 
+    public function bookedSeats()
+    {
+        return $this->hasMany(Seat::class)->whereNotNull('booking_id');
+    }
+
     public function checkpoints()
     {
         return $this->hasMany(TripCheckpoint::class);
@@ -67,5 +65,10 @@ class Trip extends Model
     public function driverCheckpointLogs()
     {
         return $this->hasMany(DriverCheckpointLog::class);
+    }
+
+    public function objections()
+    {
+        return $this->hasMany(TripObjection::class);
     }
 }

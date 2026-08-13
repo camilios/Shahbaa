@@ -14,10 +14,25 @@ class PrivateTripRequest extends Model
         'from_location',
         'to_location',
         'status',
+        'rejection_reason',
+        'rejected_by',
+        'rejected_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'rejected_at' => 'datetime',
+        ];
+    }
 
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function rejectedBy()
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
     }
 }

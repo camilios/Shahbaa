@@ -13,17 +13,16 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-
-            // البيانات الشخصية
-            $table->string('full_name');
-            $table->string('mother_name')->nullable();
-            $table->string('father_name');
+            $table->string('name');
             $table->string('email')->unique();
             $table->string('phone')->unique();
             $table->enum('gender', ['male', 'female'])->nullable();
             $table->string('national_number')->unique();
             $table->string('photo')->nullable();
-            $table->foreignId('role_id')->nullable();
+            $table->foreignId('role_id')
+                ->nullable()
+                ->constrained('roles')
+                ->onDelete('cascade');
             $table->enum('status', ['active', 'inactive', 'blocked'])
                 ->default('active');
             $table->timestamp('email_verified_at')->nullable();

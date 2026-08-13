@@ -20,20 +20,19 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'full_name',
-        'father_name',
-        'mother_name',
+        'name',
         'email',
         'password',
         'phone',
+        'national_number',
+        'father_name',
         'gender',
-        'role_id',
+        'role',
         'status',
         'national_number',
-        'photo',
-        'qr_token'
+        'photo'
     ];
-    protected $appends = ['photo_url'];
+
     /**
      * The attributes that should be hidden for serialization.
      *
@@ -57,9 +56,25 @@ class User extends Authenticatable
         ];
     }
 
-    public function role()
+    public function roles()
     {
-        return $this->belongsTo(Role::class);
+        return $this->hasMany(Role::class);
+    }
+
+    /**
+     * Determine whether the user is a driver.
+     */
+    public function isDriver(): bool
+    {
+        return strtolower((string) $this->role) === 'driver';
+    }
+
+    /**
+     * Determine whether the user may use administrative features.
+     */
+    public function isAdmin(): bool
+    {
+        return strtolower((string) $this->role) === 'admin';
     }
 
     public function trips()
@@ -105,12 +120,5 @@ class User extends Authenticatable
     public function driverCheckpointLogs()
     {
         return $this->hasMany(DriverCheckpointLog::class, 'driver_id');
-    }
-
-    public function getPhotoUrlAttribute()
-    {
-        return $this->photo
-            ? asset('storage/' . $this->photo)
-            : null;
     }
 }
