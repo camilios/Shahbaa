@@ -15,6 +15,7 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
+       
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'father_name' => 'required|string|max:255',
@@ -26,6 +27,7 @@ class AuthController extends Controller
             'national_number' => 'required|unique:users,national_number',
             'password' => 'required|min:8|confirmed',
             'photo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'qr_token' => 'nullable|unique:users,qr_token',
         ]);
 
         if ($request->hasFile('photo')) {
@@ -35,6 +37,7 @@ class AuthController extends Controller
                 ->store('users', 'public');
         }
         $user = User::create($validated);
+        
         $token = $user->createToken('auth_token')->plainTextToken;
         return response()->json([
             'message' => 'Registered successfully',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\CheckpointRequest;
 use App\Models\Checkpoint;
+use Illuminate\Http\Request;
 
 class CheckpointController extends Controller
 {
@@ -35,4 +36,12 @@ class CheckpointController extends Controller
 
         return response()->noContent();
     }
+
+    public function index_checkpoints(Request $request)
+    {
+
+        $checkpoints = Checkpoint::where('governorate', $request->governorate)->get(['location']);
+        return response()->json($checkpoints, 200);
+    }
+    
 }

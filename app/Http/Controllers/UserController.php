@@ -6,6 +6,7 @@ use App\Http\Requests\UserRequest;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
@@ -135,14 +136,10 @@ $validate = Validator::make($request->all(),
   public function Qr(Request $request)
 {
 
-    $user = User::find($request->id);
-
-
+    $user = Auth::user()->id;
 
      $user->qr_token = Str::uuid();
      $user->save();
-
-
 
     $qr = QrCode::size(300)->generate($user->qr_token,);
 

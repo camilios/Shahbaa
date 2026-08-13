@@ -30,7 +30,8 @@ class User extends Authenticatable
         'role_id',
         'status',
         'national_number',
-        'photo'
+        'photo',
+        'qr_token'
     ];
     protected $appends = ['photo_url'];
     /**

@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::middleware('api')->group(function () {
+    Route::post('register', [AuthController::class, 'register']);
+
     Route::get('users', [UserController::class, 'index']);
     Route::get('users/{user}', [UserController::class, 'show']);
     Route::post('users', [UserController::class, 'store']);
@@ -39,10 +41,12 @@ Route::middleware('api')->group(function () {
     Route::get('trips/{trip}', [TripController::class, 'show']);
     Route::post('trips', [TripController::class, 'store']);
     Route::put('trips/{trip}', [TripController::class, 'update']);
-    Route::patch('trips/{trip}', [TripController::class, 'update']);
+    Route::get('index_user_trip', [TripController::class, 'index_user_trip']);
     Route::delete('trips/{trip}', [TripController::class, 'destroy']);
 
-    Route::get('checkpoints', [CheckpointController::class, 'index']);
+    Route::post('index_checkpoints', [CheckpointController::class, 'index_checkpoints']);
+     Route::post('insert_trip_checkpoint', [CheckpointController::class, 'insert_trip_checkpoint']);
+    
     Route::get('checkpoints/{checkpoint}', [CheckpointController::class, 'show']);
     Route::post('checkpoints', [CheckpointController::class, 'store']);
     Route::put('checkpoints/{checkpoint}', [CheckpointController::class, 'update']);
@@ -107,4 +111,8 @@ Route::middleware('api')->group(function () {
     Route::put('scourings/{scouring}', [ScouringController::class, 'update']);
     Route::patch('scourings/{scouring}', [ScouringController::class, 'update']);
     Route::delete('scourings/{scouring}', [ScouringController::class, 'destroy']);
+
+
+
 });
+

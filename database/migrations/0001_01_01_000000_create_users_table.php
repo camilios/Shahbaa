@@ -23,10 +23,7 @@ return new class extends Migration
             $table->enum('gender', ['male', 'female'])->nullable();
             $table->string('national_number')->unique();
             $table->string('photo')->nullable();
-            $table->foreignId('role_id')
-                ->nullable()
-                ->constrained('roles')
-                ->onDelete('cascade');
+            $table->foreignId('role_id')->nullable();
             $table->enum('status', ['active', 'inactive', 'blocked'])
                 ->default('active');
             $table->timestamp('email_verified_at')->nullable();
