@@ -366,6 +366,41 @@ class AdminApplicationManagementTest extends TestCase
             ->assertJsonPath('user.status', 'active');
     }
 
+    public function test_driver_scan_marks_the_booking_as_booked(): void
+    {
+        $driver = $this->user('driver');
+        $customer = $this->user('customer');
+        $customer->forceFill(['qr_token' => 'customer-ticket-token'])->save();
+        [$from, $to] = $this->checkpoints();
+        $trip = $this->trip($driver, [$from, $to], 2);
+        $booking = Booking::create([
+            'user_id' => $customer->id,
+            'driver_id' => $driver->id,
+            'trip_id' => $trip->id,
+            'pickup_checkpoint_id' => $from->id,
+            'dropoff_checkpoint_id' => $to->id,
+            'seats_count' => 1,
+            'status' => 'pending',
+        ]);
+        Sanctum::actingAs($driver);
+
+        $this->postJson("/api/driver/trips/{$trip->id}/scan", [
+            'qr_token' => 'customer-ticket-token',
+        ])->assertOk()
+            ->assertJsonPath('passenger.booking_id', $booking->id)
+            ->assertJsonPath('passenger.status', 'booked');
+
+        $booking->refresh();
+        $this->assertSame('booked', $booking->status);
+        $this->assertNotNull($booking->boarded_at);
+
+        $this->postJson("/api/driver/trips/{$trip->id}/scan", [
+            'qr_token' => 'customer-ticket-token',
+        ])->assertOk()
+            ->assertJsonPath('message', 'Passenger already boarded.')
+            ->assertJsonPath('passenger.status', 'booked');
+    }
+
     public function test_admin_can_view_and_reply_to_ratings_and_complaints(): void
     {
         $admin = $this->user('admin');
