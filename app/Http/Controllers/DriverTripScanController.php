@@ -55,7 +55,10 @@ class DriverTripScanController extends Controller
         $alreadyBoarded = $booking->boarded_at !== null;
 
         if (! $alreadyBoarded) {
-            $booking->update(['boarded_at' => now()]);
+            $booking->update([
+                'boarded_at' => now(),
+                'status' => 'booked',
+            ]);
         }
 
         return response()->json([
@@ -68,6 +71,7 @@ class DriverTripScanController extends Controller
                 'name' => $passenger->name,
                 'phone' => $passenger->phone,
                 'seats_count' => $booking->seats_count,
+                'status' => $booking->status,
                 'boarded_at' => $booking->boarded_at,
             ],
         ]);
