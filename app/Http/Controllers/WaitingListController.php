@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\WaitingListRequest;
+use App\Models\Booking;
 use App\Models\WaitingList;
 use App\Models\Trip;
 use App\Services\WaitingListPromotionService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -77,4 +80,41 @@ class WaitingListController extends Controller
 
         return response()->noContent();
     }
+
+    public function insert_to_waitingList(Request $request)
+    {
+        WaitingList::insert([
+        'user_id' =>  auth('sanctum')->user()->id,
+        'trip_id' => $request->trip_id,
+        'pickup_checkpoint_id' => $request->pickup_checkpoint_id,
+        'dropoff_checkpoint_id' => $request->dropoff_checkpoint_id,
+        'seats_count' => $request->seats_count,
+        ]);
+
+        return response()->json([
+            'message' => 'You have been added to the waiting list.',
+            'note' => 'You will be notified when a new trip is available.',
+            'status' => 200,
+        ]);
+    }
+
+    static function trip_wating_book($request)
+    {
+      $wating = WaitingList::where('user_id' , auth('sanctum')->user()->id)->pluck('trip_id')->values();
+      $trip = Trip::whereIn('id' , $wating)->pluck('id')->values();
+
+      foreach($trip as $t)
+      {
+         if($t == $request)
+         {
+            $id = WaitingList::where('user_id' , auth('sanctum')->user()->id)->value('id');
+           $wat = WaitingList::find($id);
+           $wat->delete();
+         }
+      }
+
+
+    }
+
+
 }

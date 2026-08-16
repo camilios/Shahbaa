@@ -15,9 +15,9 @@ class Booking extends Model
         'trip_id',
         'pickup_checkpoint_id',
         'dropoff_checkpoint_id',
-        '   ',
+        'seats_count',
         'status',
-        'boarded_at',
+        // 'boarded_at',
     ];
 
     protected function casts(): array

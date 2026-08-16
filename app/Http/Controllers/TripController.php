@@ -8,8 +8,11 @@ use App\Models\Checkpoint;
 use App\Models\Seat;
 use App\Models\Trip;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Validator;
+use Nette\Schema\ValidationException;
 
 class TripController extends Controller
 {
@@ -108,38 +111,32 @@ class TripController extends Controller
         return response()->noContent();
     }
 
-    private function replaceCheckpoints(Trip $trip, array $checkpointIds): void
+
+    public function index_user_trip()
     {
-    //    $validate =Validator::make($request->all(), [
-    //     'type' => 'required',
-    //     'point_price' => 'required',
-    //     'money_price' => 'required',
-    //     'status' => 'required',
-    //     'departure_date' => 'required',
-    //     'arrival_date' => 'required',
-    //     'total_seats' => 'required',
-    //     'available_seats' => 'required',
-    //     'earned_points' => 'required',
-    //    ]);
 
-        // if($validate->fails()){
-        //     return response()->json($validate->errors(),400);
-        // }
+           $users = auth('sanctum')->user()->id;
 
-        // $trip = Trip::create([
-        // 'driver_id' => $request->driver_id,
-        // 'type' => $request->type,
-        // 'point_price' => 'required',
-        // 'money_price' => 'required',
-        // 'status' => 'required',
-        // 'departure_date' => 'required',
-        // 'arrival_date' => 'required',
-        // 'total_seats' => 'required',
-        // 'available_seats' => 'required',
-        // 'earned_points' => 'required',
-        // ]);
+        // $bok = Booking::where('user_id', $user->id)->pluck('trip_id')->toArray();
+        // $trips = Trip::whereIn('id', $bok)->get('departure_date');
+
+        $Trips = DB::table('bookings')->where('user_id' , $users)->
+        join('trips' , 'trips.id' , 'bookings.trip_id')->join('seats' , 'seats.trip_id', 'bookings.trip_id')
+        ->join('trip_checkpoints' , 'trip_checkpoints.trip_id' , 'seats.trip_id')->
+        join('checkpoints' , 'checkpoints.id' , 'trip_checkpoints.checkpoint_id')
+        ->get(['seat_number' , 'departure_date' , 'governorate' , 'name' , 'bookings.status']);
+        return response()->json(['Trips' => $Trips]);
 
     }
+
+        public function index_gov()
+    {
+        $gov = Checkpoint::pluck('governorate')->unique()->values();
+
+        return response()->json(['governorates' => $gov]);
+
+    }
+
 
     }
 

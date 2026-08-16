@@ -2,6 +2,13 @@
 
 namespace Database\Seeders;
 
+use App\Models\Booking;
+use App\Models\Checkpoint;
+use App\Models\Complaint;
+use App\Models\DriverCheckpointLog;
+use App\Models\DriverRequest;
+use App\Models\PrivateTripRequest;
+use App\Models\Rating;
 use App\Models\Role;
 use App\Models\Scouring;
 use App\Models\Seat;
@@ -11,6 +18,7 @@ use App\Models\User;
 use App\Models\WaitingList;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
 
 class DatabaseSeeder extends Seeder
 {
@@ -302,7 +310,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
 
-        $this->call(CheckpointSeeder::class);
+      
 
     }
 }

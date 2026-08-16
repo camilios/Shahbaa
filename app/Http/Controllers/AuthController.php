@@ -10,12 +10,10 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    /**
-     * Register
-     */
+
     public function register(Request $request)
     {
-       
+
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'father_name' => 'required|string|max:255',
@@ -30,6 +28,7 @@ class AuthController extends Controller
             'qr_token' => 'nullable|unique:users,qr_token',
         ]);
 
+
         if ($request->hasFile('photo')) {
 
             $validated['photo'] = $request
@@ -37,7 +36,7 @@ class AuthController extends Controller
                 ->store('users', 'public');
         }
         $user = User::create($validated);
-        
+
         $token = $user->createToken('auth_token')->plainTextToken;
         return response()->json([
             'message' => 'Registered successfully',
@@ -71,7 +70,7 @@ class AuthController extends Controller
             'message' => 'Login successful',
             'token' => $token,
             'token_type' => 'Bearer',
-            'user' => $user->load('role'),
+         //   'user' => $user->load('role'),
         ]);
     }
 

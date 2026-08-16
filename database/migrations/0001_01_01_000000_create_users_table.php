@@ -15,16 +15,10 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('phone')->unique();
-            $table->enum('gender', ['male', 'female'])->nullable();
-            $table->string('national_number')->unique();
-            $table->string('photo')->nullable();
-            $table->foreignId('role_id')
-                ->nullable()
-                ->constrained('roles')
-                ->onDelete('cascade');
-            $table->enum('status', ['active', 'inactive', 'blocked'])
-                ->default('active');
+            $table->string('phone')->nullable();
+            $table->string('gender')->nullable();
+            $table->string('role')->nullable();
+            $table->string('status')->default('active');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();

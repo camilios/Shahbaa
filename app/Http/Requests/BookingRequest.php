@@ -14,7 +14,8 @@ class BookingRequest extends ApiRequest
                 : ['prohibited'];
 
             return [
-                'user_id' => $userIdRules,
+                'user_id' => 'required|integer',
+                'driver_id' => 'required|integer',
                 'trip_id' => 'required|exists:trips,id',
                 'pickup_checkpoint_id' => 'required|exists:checkpoints,id',
                 'dropoff_checkpoint_id' => 'required|exists:checkpoints,id',

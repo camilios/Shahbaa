@@ -1,21 +1,13 @@
 <?php
 
-use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CheckpointController;
 use App\Http\Controllers\ComplaintController;
-use App\Http\Controllers\DriverAuthController;
 use App\Http\Controllers\DriverCheckpointLogController;
 use App\Http\Controllers\DriverRequestController;
-use App\Http\Controllers\DriverTripCheckpointController;
-use App\Http\Controllers\DriverTripController;
-use App\Http\Controllers\DriverTripObjectionController;
-use App\Http\Controllers\DriverTripPassengerController;
-use App\Http\Controllers\DriverTripScanController;
 use App\Http\Controllers\PrivateTripRequestController;
 use App\Http\Controllers\RatingController;
-use App\Http\Controllers\RealtimeTrackingAuthorizationController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ScouringController;
 use App\Http\Controllers\TripController;
@@ -24,6 +16,12 @@ use App\Http\Controllers\WaitingListController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('api')->group(function () {
+
+Route::post('/register', [AuthController::class , 'register']);
+Route::post('/login', [AuthController::class , 'login']);
+Route::post('/logout', [AuthController::class , 'logout']);
+Route::post('/deleted', [AuthController::class , 'deleted']);
+
     Route::get('users', [UserController::class, 'index']);
     Route::get('users/{user}', [UserController::class, 'show']);
     Route::post('users', [UserController::class, 'store']);
@@ -69,13 +67,22 @@ Route::middleware('api')->group(function () {
     Route::put('trips/{trip}', [TripController::class, 'update']);
     Route::patch('trips/{trip}', [TripController::class, 'update']);
     Route::delete('trips/{trip}', [TripController::class, 'destroy']);
+    Route::get('index_user_trip', [TripController::class, 'index_user_trip']);
+    Route::get('index_gov', [TripController::class, 'index_gov']);
 
-    Route::get('checkpoints', [CheckpointController::class, 'index']);
+
+
+
+    Route::post('index_droppoff_pickup', [CheckpointController::class, 'index_droppoff_pickup']);
     Route::get('checkpoints/{checkpoint}', [CheckpointController::class, 'show']);
     Route::post('checkpoints', [CheckpointController::class, 'store']);
     Route::put('checkpoints/{checkpoint}', [CheckpointController::class, 'update']);
     Route::patch('checkpoints/{checkpoint}', [CheckpointController::class, 'update']);
     Route::delete('checkpoints/{checkpoint}', [CheckpointController::class, 'destroy']);
+    Route::post('details_not_scan', [CheckpointController::class, 'details_not_scan']);
+    Route::post('details_scan', [CheckpointController::class, 'details_scan']);
+
+
 
         Route::get('bookings', [
             BookingController::class,
@@ -138,7 +145,7 @@ Route::middleware('api')->group(function () {
             'destroy',
         ]);
 
-        Route::get('ratings', [
+        Route::get('rating_index', [
             RatingController::class,
             'index',
         ]);
@@ -148,52 +155,52 @@ Route::middleware('api')->group(function () {
             'show',
         ]);
 
-        Route::post('ratings', [
+        Route::post('rating_store', [
             RatingController::class,
             'store',
         ]);
 
-        Route::put('ratings/{rating}', [
+        Route::post('rating_update', [
             RatingController::class,
             'update',
         ]);
 
-        Route::patch('ratings/{rating}', [
-            RatingController::class,
-            'update',
-        ]);
+        // Route::patch('ratings/{rating}', [
+        //     RatingController::class,
+        //     'update',
+        // ]);
 
-        Route::delete('ratings/{rating}', [
+        Route::delete('rating_delete', [
             RatingController::class,
             'destroy',
         ]);
 
-        Route::get('complaints', [
+        Route::get('complaint_index', [
             ComplaintController::class,
             'index',
         ]);
 
-        Route::get('complaints/{complaint}', [
+        Route::get('complaint', [
             ComplaintController::class,
             'show',
         ]);
 
-        Route::post('complaints', [
+        Route::post('complaint_store', [
             ComplaintController::class,
             'store',
         ]);
 
-        Route::put('complaints/{complaint}', [
+        Route::post('complaint_update', [
             ComplaintController::class,
             'update',
         ]);
 
-        Route::patch('complaints/{complaint}', [
-            ComplaintController::class,
-            'update',
-        ]);
+        // Route::patch('complaints/{complaint}', [
+        //     ComplaintController::class,
+        //     'update',
+        // ]);
 
-        Route::delete('complaints/{complaint}', [
+        Route::delete('complaint_delete', [
             ComplaintController::class,
             'destroy',
         ]);
@@ -232,6 +239,12 @@ Route::middleware('api')->group(function () {
             WaitingListController::class,
             'index',
         ]);
+
+           Route::post('insert_to_waitingList', [
+            WaitingListController::class,
+            'insert_to_waitingList',
+        ]);
+
 
         Route::get('waiting-lists/{waiting_list}', [
             WaitingListController::class,
