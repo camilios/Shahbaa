@@ -346,6 +346,26 @@ class AdminApplicationManagementTest extends TestCase
         $this->getJson('/api/checkpoints')->assertForbidden();
     }
 
+    public function test_only_admin_can_unblock_a_user(): void
+    {
+        $target = User::factory()->create([
+            'role' => 'customer',
+            'status' => 'inactive',
+        ]);
+
+        $this->patchJson("/api/users/{$target->id}/unblock")
+            ->assertUnauthorized();
+
+        Sanctum::actingAs($this->user('customer'));
+        $this->patchJson("/api/users/{$target->id}/unblock")
+            ->assertForbidden();
+
+        Sanctum::actingAs($this->user('admin'));
+        $this->patchJson("/api/users/{$target->id}/unblock")
+            ->assertOk()
+            ->assertJsonPath('user.status', 'active');
+    }
+
     public function test_admin_can_view_and_reply_to_ratings_and_complaints(): void
     {
         $admin = $this->user('admin');

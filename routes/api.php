@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CheckpointController;
 use App\Http\Controllers\ComplaintController;
+use App\Http\Controllers\CustomerTripController;
 use App\Http\Controllers\DriverAuthController;
 use App\Http\Controllers\DriverCheckpointLogController;
 use App\Http\Controllers\DriverRequestController;
@@ -35,6 +36,35 @@ Route::middleware('api')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
 
     Route::middleware(['auth:sanctum', 'active'])->group(function () {
+        // Customer application read models and ticket state.
+        Route::get('customer/trips', [CustomerTripController::class, 'myTrips']);
+        Route::get('customer/governorates', [CustomerTripController::class, 'governorates']);
+        Route::post('customer/checkpoints/by-governorate', [CustomerTripController::class, 'checkpointsByGovernorate']);
+        Route::post('customer/trips/{trip}/ticket/before-scan', [CustomerTripController::class, 'detailsBeforeScan']);
+        Route::post('customer/trips/{trip}/ticket/after-scan', [CustomerTripController::class, 'detailsAfterScan']);
+
+        // Backward-compatible aliases used by the current customer frontend.
+        Route::get('index_user_trip', [CustomerTripController::class, 'myTrips']);
+        Route::get('index_gov', [CustomerTripController::class, 'governorates']);
+        Route::post('index_droppoff_pickup', [CustomerTripController::class, 'checkpointsByGovernorate']);
+        Route::post('details_not_scan', [CustomerTripController::class, 'detailsBeforeScanLegacy']);
+        Route::post('details_scan', [CustomerTripController::class, 'detailsAfterScanLegacy']);
+
+        Route::post('customer/waiting-list', [WaitingListController::class, 'storeForCurrentUser']);
+        Route::delete('customer/waiting-list/{trip}', [WaitingListController::class, 'leaveCurrentUser']);
+        Route::post('insert_to_waitingList', [WaitingListController::class, 'storeForCurrentUser']);
+        Route::post('trip_wating_book', [WaitingListController::class, 'leaveCurrentUserLegacy']);
+
+        Route::get('customer/ratings', [RatingController::class, 'mine']);
+        Route::post('customer/ratings', [RatingController::class, 'storeForCurrentUser']);
+        Route::patch('customer/ratings/{rating}', [RatingController::class, 'updateForCurrentUser']);
+        Route::delete('customer/ratings/{rating}', [RatingController::class, 'destroyForCurrentUser']);
+
+        Route::get('customer/complaints', [ComplaintController::class, 'mine']);
+        Route::post('customer/complaints', [ComplaintController::class, 'storeForCurrentUser']);
+        Route::patch('customer/complaints/{complaint}', [ComplaintController::class, 'updateForCurrentUser']);
+        Route::delete('customer/complaints/{complaint}', [ComplaintController::class, 'destroyForCurrentUser']);
+
         Route::post('admin/logout', [AdminAuthController::class, 'logout']);
 
         Route::post(
@@ -100,11 +130,6 @@ Route::middleware('api')->group(function () {
         ]);
     });
 
-    Route::patch('users/{user}/unblock', [
-        UserController::class,
-        'unblock',
-    ]);
-
     Route::middleware(['auth:sanctum', 'active'])->group(function () {
         // Customer profile endpoints added from mohamd branch.
         Route::post('update_profile', [
@@ -131,6 +156,11 @@ Route::middleware('api')->group(function () {
             Route::patch('users/{user}/block', [
                 UserController::class,
                 'block',
+            ]);
+
+            Route::patch('users/{user}/unblock', [
+                UserController::class,
+                'unblock',
             ]);
 
             Route::post('ratings/{rating}/reply', [

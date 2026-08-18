@@ -63,6 +63,17 @@ class BookingController extends Controller
                 ->lockForUpdate()
                 ->findOrFail($data['trip_id']);
 
+            if (
+                $trip->departure_date
+                && $trip->departure_date->lte(now()->addHours(2))
+            ) {
+                throw ValidationException::withMessages([
+                    'trip_id' => [
+                        'Bookings must be created at least two hours before departure.',
+                    ],
+                ]);
+            }
+
             $this->validateBookingDetails($trip, $data);
 
             $userId = $actor->isAdmin()
@@ -229,23 +240,32 @@ class BookingController extends Controller
 
     public function index_trip_time(Request $request)
     {
-        $trip = Trip::all();
+        $data = $request->validate([
+            'governorate' => ['required', 'string', 'max:255'],
+            'time' => ['required', 'date'],
+        ]);
 
-        $loc = Checkpoint::where(
-            'governorate',
-            $request->governorate
-        )->value('id');
+        $checkpointIds = Checkpoint::query()
+            ->where('governorate', $data['governorate'])
+            ->pluck('id');
 
-        $chec_loc = TripCheckpoint::where(
-            'checkpoint_id',
-            $loc
-        )->pluck('trip_id');
+        $tripIds = TripCheckpoint::query()
+            ->whereIn('checkpoint_id', $checkpointIds)
+            ->pluck('trip_id');
 
-        $trip_time = Trip::whereIn('id', $chec_loc)
-            ->whereDate('departure_date', $request->time)
-            ->get();
+        $tripTime = Trip::query()
+            ->whereIn('id', $tripIds)
+            ->whereDate('departure_date', $data['time'])
+            ->orderBy('departure_date')
+            ->get()
+            ->map(fn (Trip $trip) => [
+                'id' => $trip->id,
+                'departure_date' => $trip->departure_date,
+                'time' => $trip->departure_date?->format('H:i'),
+                'status' => $trip->status,
+            ]);
 
-        return response()->json($trip_time);
+        return response()->json($tripTime);
     }
 
     public function Index_droppoff(Request $request)
