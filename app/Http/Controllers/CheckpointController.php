@@ -21,17 +21,23 @@ class CheckpointController extends Controller
 
     public function details_not_scan(Request $request)
     {
-        $book = Booking::where('trip_id' , $request->id)->value('id');
-        $status = Booking::where('id' , $book)->value('status');
+        $user = auth('sanctum')->user();
+
+       $booking = Booking::where('user_id', $user->id)
+    ->where('trip_id', $request->id)
+    ->first();
+
+
+        $status = Booking::where('id' , $booking->id)->value('status');
            if ($status == 'pending')
             {
 
-        if($book != null)
+        if($booking != null)
             {
         $trip_date = Trip::where('id',$request->id)->value('departure_date');
             }
 
-               $booking = Booking::find($request->id);
+               $booking = Booking::find($booking->id);
                $booking->dropoff_checkpoint_id = $request->dropoff_checkpoint_id;
                $booking->save();
 
@@ -81,18 +87,22 @@ class CheckpointController extends Controller
 
     public function details_scan(Request $request)
     {
-         $book = Booking::where('trip_id' , $request->id)->value('id');
-         $status = Booking::where('id' , $book)->value('status');
+         $user = auth('sanctum')->user();
+
+       $booking = Booking::where('user_id', $user->id)
+    ->where('trip_id', $request->id)
+    ->first();
+
+         $status = Booking::where('id' , $booking->id)->value('status');
           if ($status == 'booked')
             {
-            
-        
-        if($book != null)
+
+        if($booking != null)
             {
         $trip_date = Trip::where('id',$request->id)->value('departure_date');
             }
 
-               $booking = Booking::find($request->id);
+               $booking = Booking::find($booking->id);
                $booking->dropoff_checkpoint_id = $request->dropoff_checkpoint_id;
                $booking->save();
 

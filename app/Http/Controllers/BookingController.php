@@ -47,7 +47,7 @@ class BookingController extends Controller
 
     public function store(Request $request)
     {
-        
+
          $validate = Validator::make($request->all(),
         [
                 'driver_id' => 'required|integer',
@@ -102,7 +102,7 @@ class BookingController extends Controller
             }
 
             return response()->json(['booking' => $booking]);
-        
+
     }
 
 
@@ -137,80 +137,12 @@ class BookingController extends Controller
 
         return response()->json(['Booking'=>$booking]);
 
-    //    // $data = $booking->validated();
-    //     $booking = Booking::find($booking->id);
-    // //    return response()->json(['sds']);
-    //     return DB::transaction(function () use ($booking) {
-    //         $originalTrip = $booking->trip;
-    //         $originalSeats = (int) $booking->seats_count;
-    //         $newTrip = $originalTrip;
-    //         $newSeats = $originalSeats;
 
-
-    //         if (array_key_exists('trip_id', $booking->trip_id) && ! is_null($booking->trip_id['trip_id']) && $booking->trip_id['trip_id'] !== $originalTrip->id) {
-    //             $newTrip = Trip::find($booking->trip_id['trip_id']);
-
-    //             if (! $newTrip) {
-    //                 return response()->json(['message' => 'New trip not found.'], 404);
-    //             }
-    //         }
-
-
-    //         if (array_key_exists('seats_count', $booking->seats_count) && ! is_null($booking->seats_count['seats_count'])) {
-    //             $newSeats = (int) $booking->seats_count['seats_count'];
-    //         }
-
-    //         if ($newTrip->id !== $originalTrip->id) {
-    //             if (Carbon::now()->addHours(2)->greaterThan(Carbon::parse($newTrip->departure_date))) {
-    //                 return response()->json([
-    //                     'message' => 'Booking must be made at least 2 hours before the trip departure.'
-    //                 ], 422);
-    //             }
-
-    //             if ($newSeats > $newTrip->available_seats) {
-    //                 return response()->json([
-    //                     'message' => 'Not enough seats available on the new trip.'
-    //                 ], 422);
-    //             }
-
-    //             $originalTrip->available_seats += $originalSeats;
-    //             $originalTrip->save();
-
-    //             $newTrip->available_seats -= $newSeats;
-    //             $newTrip->save();
-    //         } else {
-    //             $seatDifference = $newSeats - $originalSeats;
-
-    //             if ($seatDifference > 0 && $seatDifference > $originalTrip->available_seats) {
-    //                 return response()->json([
-    //                     'message' => 'Not enough seats available to increase reservation.'
-    //                 ], 422);
-    //             }
-
-    //             $originalTrip->available_seats -= $seatDifference;
-    //             $originalTrip->save();
-    //         }
-
-    //         $booking->update($booking->all());
-
-    //         return $booking->load(['user', 'driver', 'trip', 'pickupCheckpoint', 'dropoffCheckpoint', 'scouring']);
-    //     });
     }
 
     public function destroy(Booking $booking)
     {
 
-        // $booking = Booking::find($re);
-        // $trip = $booking->trip;
-        //    if ($trip) {
-        //      $trip->available_seats += (int) $booking->seats_count;
-        //      $trip->save();
-        //               }
-        //     $booking->delete();
-        // return response()->json([
-        //     'succes' =>true,
-        //     'msg' => 'deleted succesfully'
-        // ]);
         return DB::transaction(function () use ($booking) {
         $trip = $booking->trip;
 
@@ -221,9 +153,9 @@ class BookingController extends Controller
             $releasedSeats = $booking->seat_count;
             $booking->delete();
 
-            
+
             $book = Booking::where('trip_id' , $booking->trip_id)->value('id');
-         
+
 
             $booking = Booking::find($book);
             $booking->status = 'cancelled';
@@ -245,7 +177,7 @@ class BookingController extends Controller
         //         'driver_id' => $booking->driver_id,
         //         'pickup_checkpoint_id' => $waiting->pickup_checkpoint_id,
         //         'dropoff_checkpoint_id' => $waiting->dropoff_checkpoint_id,
-              
+
         //     ]);
 
         //     // إنقاص المقاعد التي أخذها من الرحلة
@@ -265,7 +197,7 @@ class BookingController extends Controller
 
 
 
-        
+
         });
 
         return response()->noContent();
@@ -319,19 +251,6 @@ class BookingController extends Controller
 
     public function index_trip_time(Request $request)
     {
-        // $trip = Trip::all();
-
-        // $loc = Checkpoint::where( 'governorate', $request->governorate )->value('id');
-
-        // $chec_loc = TripCheckpoint::where('checkpoint_id',  $loc )->pluck('trip_id');
-
-        // $trip_time = Trip::whereIn('id', $chec_loc)
-        //     ->whereDate('departure_date', $request->time)
-        //     ->pluck();
-           
-        // $time = Carbon::parse($trip->departure_date)->format('H:i');;
-
-        // return response()->json($time);
 
     $loc = Checkpoint::where(
         'governorate',
@@ -373,16 +292,7 @@ class BookingController extends Controller
         ]);
     }
 
-    // public function Index_pickup(Request $request)
-    // {
-
-
-    //     $pickup = Checkpoint::where('governorate' , $request->governorate)->get('location');
-
-    //     return response()->json([
-    //         'pickup' => $pickup,
-    //     ]);
-    // }
+ 
 
 
 }

@@ -271,6 +271,12 @@ Route::post('/deleted', [AuthController::class , 'deleted']);
             'destroy',
         ]);
 
+        Route::post('trip_wating_book', [
+            WaitingListController::class,
+            'trip_wating_book',
+        ]);
+
+
         Route::get('driver-requests', [
             DriverRequestController::class,
             'index',

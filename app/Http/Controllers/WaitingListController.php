@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\WaitingListRequest;
 use App\Models\Booking;
+use Illuminate\Support\Facades\Validator;
 use App\Models\WaitingList;
 use App\Models\Trip;
 use App\Services\WaitingListPromotionService;
@@ -81,40 +82,70 @@ class WaitingListController extends Controller
         return response()->noContent();
     }
 
-    public function insert_to_waitingList(Request $request)
-    {
-        WaitingList::insert([
-        'user_id' =>  auth('sanctum')->user()->id,
+   public function insert_to_waitingList(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'trip_id' => 'required|integer|exists:trips,id',
+        'pickup_checkpoint_id' => 'required|integer|exists:checkpoints,id',
+        'dropoff_checkpoint_id' => 'required|integer|exists:checkpoints,id',
+        'seats_count' => 'required|integer|min:1|max:50',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'message' => 'Validation error.',
+            'errors' => $validator->errors(),
+        ], 422);
+    }
+
+    $user = auth('sanctum')->user();
+
+    if (!$user) {
+        return response()->json([
+            'message' => 'Unauthenticated.',
+        ], 401);
+    }
+
+   
+    $alreadyWaiting = WaitingList::where('user_id', $user->id)
+        ->where('trip_id', $request->trip_id)
+        ->exists();
+
+    if ($alreadyWaiting) {
+        return response()->json([
+            'message' => 'You are already in the waiting list for this trip.',
+        ], 409);
+    }
+
+    $waitingList = WaitingList::create([
+        'user_id' => $user->id,
         'trip_id' => $request->trip_id,
         'pickup_checkpoint_id' => $request->pickup_checkpoint_id,
         'dropoff_checkpoint_id' => $request->dropoff_checkpoint_id,
         'seats_count' => $request->seats_count,
-        ]);
+    ]);
 
-        return response()->json([
-            'message' => 'You have been added to the waiting list.',
-            'note' => 'You will be notified when a new trip is available.',
-            'status' => 200,
-        ]);
-    }
+    return response()->json([
+        'message' => 'You have been added to the waiting list.',
+        'data' => $waitingList,
+        'status' => 201,
+    ], 201);
+}
 
-    static function trip_wating_book($request)
+
+    public function trip_wating_book(Request $request)
     {
-      $wating = WaitingList::where('user_id' , auth('sanctum')->user()->id)->pluck('trip_id')->values();
-      $trip = Trip::whereIn('id' , $wating)->pluck('id')->values();
+        WaitingList::where('trip_id', $request->id)->delete();
 
-      foreach($trip as $t)
-      {
-         if($t == $request)
-         {
-            $id = WaitingList::where('user_id' , auth('sanctum')->user()->id)->value('id');
-           $wat = WaitingList::find($id);
-           $wat->delete();
-         }
-      }
-
-
+           return response()->json([
+            'message' => 'You have been removed from the waiting list.',
+            'status' => 200,]);
     }
+
+
+
+
+
 
 
 }
