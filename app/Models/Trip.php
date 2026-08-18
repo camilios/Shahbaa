@@ -22,6 +22,14 @@ class Trip extends Model
         'earned_points',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'departure_date' => 'datetime',
+            'arrival_date' => 'datetime',
+        ];
+    }
+
     public function driver()
     {
         return $this->belongsTo(User::class, 'driver_id');
