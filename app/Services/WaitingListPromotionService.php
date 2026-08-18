@@ -7,23 +7,40 @@ use App\Models\Trip;
 
 class WaitingListPromotionService
 {
+    private const MINIMUM_WAITING_SEATS = 30;
+
     public function promoteWhenReady(Trip $trip): ?Trip
     {
+        if ($trip->available_seats > 0) {
+            return null;
+        }
+
         $waitingCustomers = $trip->waitingList()
             ->whereIn('status', ['pending', 'waiting'])
             ->whereNotNull('pickup_checkpoint_id')
             ->whereNotNull('dropoff_checkpoint_id')
             ->orderBy('id')
-            ->limit(30)
             ->lockForUpdate()
             ->get();
 
-        if ($waitingCustomers->count() < 30) {
+        if ($waitingCustomers->sum('seats_count') < self::MINIMUM_WAITING_SEATS) {
             return null;
         }
 
-        $requiredSeats = $waitingCustomers->sum('seats_count');
-        if ($requiredSeats > $trip->total_seats) {
+        // Keep the waiting-list order and move only the requests that can be
+        // fully accommodated by a trip with the same capacity.
+        $selectedCustomers = collect();
+        $requiredSeats = 0;
+        foreach ($waitingCustomers as $waitingCustomer) {
+            if ($requiredSeats + $waitingCustomer->seats_count > $trip->total_seats) {
+                break;
+            }
+
+            $selectedCustomers->push($waitingCustomer);
+            $requiredSeats += $waitingCustomer->seats_count;
+        }
+
+        if ($selectedCustomers->isEmpty()) {
             return null;
         }
 
@@ -46,7 +63,7 @@ class WaitingListPromotionService
 
         $availableSeats = $newTrip->seats()->orderBy('seat_number')->get();
         $seatOffset = 0;
-        foreach ($waitingCustomers as $waitingCustomer) {
+        foreach ($selectedCustomers as $waitingCustomer) {
             $booking = Booking::create([
                 'user_id' => $waitingCustomer->user_id,
                 'driver_id' => $newTrip->driver_id,
@@ -63,7 +80,7 @@ class WaitingListPromotionService
         }
 
         $newTrip->update(['available_seats' => $newTrip->total_seats - $requiredSeats]);
-        $trip->waitingList()->whereKey($waitingCustomers->modelKeys())->delete();
+        $trip->waitingList()->whereKey($selectedCustomers->pluck('id'))->delete();
 
         return $newTrip->fresh();
     }
