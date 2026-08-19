@@ -21,6 +21,22 @@ class CustomerApplicationFeaturesTest extends TestCase
     {
         $this->getJson('/api/customer/trips')->assertUnauthorized();
         $this->getJson('/api/customer/governorates')->assertUnauthorized();
+        $this->postJson('/api/logout')->assertUnauthorized();
+    }
+
+    public function test_customer_can_logout_and_revoke_the_current_token(): void
+    {
+        $customer = $this->user();
+        $token = $customer->createToken('customer-app');
+
+        $this->withToken($token->plainTextToken)
+            ->postJson('/api/logout')
+            ->assertOk()
+            ->assertJsonPath('message', 'Logged out successfully');
+
+        $this->assertDatabaseMissing('personal_access_tokens', [
+            'id' => $token->accessToken->id,
+        ]);
     }
 
     public function test_governorates_are_unique_and_checkpoints_are_filtered(): void

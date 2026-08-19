@@ -1,0 +1,195 @@
+{
+  "info": {
+    "_postman_id": "3cfbbf64-55e4-4ed0-99a7-8c4f5d519e81",
+    "name": "Shahbaa - Notifications API",
+    "description": "اختبار إشعارات Shahbaa. شغّل تسجيل دخول العميل والأدمن أولاً، ثم ضع قيم booking_id وtrip_id وcomplaint_id وrating_id لسجلات موجودة تخص العميل. طلبات تسجيل الجهاز وقائمة الإشعارات تحفظ المعرّفات تلقائياً.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000/api", "type": "string" },
+    { "key": "customer_email", "value": "customer@example.com", "type": "string" },
+    { "key": "customer_password", "value": "password", "type": "string" },
+    { "key": "admin_email", "value": "admin@example.com", "type": "string" },
+    { "key": "admin_password", "value": "password", "type": "string" },
+    { "key": "customer_token", "value": "", "type": "string" },
+    { "key": "admin_token", "value": "", "type": "string" },
+    { "key": "device_token", "value": "postman-test-device-token", "type": "string" },
+    { "key": "device_token_id", "value": "", "type": "string" },
+    { "key": "notification_id", "value": "", "type": "string" },
+    { "key": "booking_id", "value": "1", "type": "string" },
+    { "key": "trip_id", "value": "1", "type": "string" },
+    { "key": "complaint_id", "value": "1", "type": "string" },
+    { "key": "rating_id", "value": "1", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Customer Login",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Customer login succeeded', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "if (json.token) pm.collectionVariables.set('customer_token', json.token);"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{customer_email}}\",\n  \"password\": \"{{customer_password}}\"\n}" },
+            "url": "{{base_url}}/login"
+          }
+        },
+        {
+          "name": "Admin Login",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Admin login succeeded', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "if (json.token) pm.collectionVariables.set('admin_token', json.token);"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}" },
+            "url": "{{base_url}}/admin/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Device Tokens",
+      "item": [
+        {
+          "name": "Register Device Token",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Token registered', () => pm.expect([200, 201]).to.include(pm.response.code));",
+                "const json = pm.response.json();",
+                "if (json.device_token?.id) pm.collectionVariables.set('device_token_id', json.device_token.id);"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{customer_token}}", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"{{device_token}}\",\n  \"platform\": \"android\",\n  \"device_name\": \"Postman Test Device\",\n  \"app_version\": \"1.0.0\"\n}" },
+            "url": "{{base_url}}/device-tokens"
+          }
+        },
+        {
+          "name": "List My Devices",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{customer_token}}", "type": "text" }],
+            "url": "{{base_url}}/device-tokens"
+          }
+        },
+        {
+          "name": "Delete Device Token",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{customer_token}}", "type": "text" }],
+            "url": "{{base_url}}/device-tokens/{{device_token_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Generate Notifications (Admin)",
+      "description": "يجب أن تكون المعرّفات لسجلات تخص العميل المسجل، والحجز pending والرحلة أبعد من ساعة.",
+      "item": [
+        {
+          "name": "Confirm Booking → booking_confirmed",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\n  \"payment_verified\": true\n}" },
+            "url": "{{base_url}}/admin/bookings/{{booking_id}}/confirm"
+          }
+        },
+        {
+          "name": "Reply to Complaint → complaint_replied",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reply\": \"تمت مراجعة الشكوى ومعالجتها.\"\n}" },
+            "url": "{{base_url}}/complaints/{{complaint_id}}/reply"
+          }
+        },
+        {
+          "name": "Reply to Rating → rating_replied",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reply\": \"شكراً لتقييمك، نقدر ملاحظاتك.\"\n}" },
+            "url": "{{base_url}}/ratings/{{rating_id}}/reply"
+          }
+        },
+        {
+          "name": "Cancel Trip → trip_cancelled",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"cancelled\"\n}" },
+            "url": "{{base_url}}/trips/{{trip_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Customer Notifications",
+      "item": [
+        {
+          "name": "List My Notifications",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "pm.test('Notifications loaded', () => pm.response.to.have.status(200));",
+                "const json = pm.response.json();",
+                "const first = json.notifications?.data?.[0];",
+                "if (first?.id) pm.collectionVariables.set('notification_id', first.id);"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{customer_token}}", "type": "text" }],
+            "url": "{{base_url}}/notifications"
+          }
+        },
+        {
+          "name": "Mark One Notification as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{customer_token}}", "type": "text" }],
+            "url": "{{base_url}}/notifications/{{notification_id}}/read"
+          }
+        },
+        {
+          "name": "Mark All Notifications as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{customer_token}}", "type": "text" }],
+            "url": "{{base_url}}/notifications/read-all"
+          }
+        }
+      ]
+    }
+  ]
+}
