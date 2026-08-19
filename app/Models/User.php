@@ -120,4 +120,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(DriverCheckpointLog::class, 'driver_id');
     }
+
+    public function deviceTokens()
+    {
+        return $this->hasMany(DeviceToken::class);
+    }
 }

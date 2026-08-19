@@ -1,11 +1,15 @@
 <?php
 
 use App\Http\Controllers\AdminAuthController;
+use App\Http\Controllers\AdminBookingConfirmationController;
+use App\Http\Controllers\AdminPointAuditLogController;
+use App\Http\Controllers\AdminReportsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CheckpointController;
 use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\CustomerTripController;
+use App\Http\Controllers\DeviceTokenController;
 use App\Http\Controllers\DriverAuthController;
 use App\Http\Controllers\DriverCheckpointLogController;
 use App\Http\Controllers\DriverRequestController;
@@ -15,6 +19,7 @@ use App\Http\Controllers\DriverTripObjectionController;
 use App\Http\Controllers\DriverTripPassengerController;
 use App\Http\Controllers\DriverTripScanController;
 use App\Http\Controllers\PrivateTripRequestController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\RealtimeTrackingAuthorizationController;
 use App\Http\Controllers\RoleController;
@@ -36,6 +41,16 @@ Route::middleware('api')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
 
     Route::middleware(['auth:sanctum', 'active'])->group(function () {
+        Route::post('logout', [AuthController::class, 'logout']);
+
+        Route::get('notifications', [NotificationController::class, 'index']);
+        Route::patch('notifications/read-all', [NotificationController::class, 'readAll']);
+        Route::patch('notifications/{notification}/read', [NotificationController::class, 'read']);
+
+        Route::get('device-tokens', [DeviceTokenController::class, 'index']);
+        Route::post('device-tokens', [DeviceTokenController::class, 'store']);
+        Route::delete('device-tokens/{deviceToken}', [DeviceTokenController::class, 'destroy']);
+
         // Customer application read models and ticket state.
         Route::get('customer/trips', [CustomerTripController::class, 'myTrips']);
         Route::get('customer/governorates', [CustomerTripController::class, 'governorates']);
@@ -148,6 +163,11 @@ Route::middleware('api')->group(function () {
         ]);
 
         Route::middleware('admin')->group(function () {
+            Route::post('admin/bookings/{booking}/confirm', AdminBookingConfirmationController::class);
+            Route::get('admin/point-audit-logs', AdminPointAuditLogController::class);
+            Route::get('admin/reports', [AdminReportsController::class, 'index']);
+            Route::get('admin/reports/export', [AdminReportsController::class, 'export']);
+
             Route::get('drivers', [
                 UserController::class,
                 'drivers',
