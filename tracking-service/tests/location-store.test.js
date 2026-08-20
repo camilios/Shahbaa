@@ -17,3 +17,12 @@ test('memory store deletes a location explicitly', () => {
   store.deleteLatest(12);
   assert.equal(store.getLatest(12), null);
 });
+
+test('cleanup reports the trip ids whose locations expired', () => {
+  let now = 1_000;
+  const store = new MemoryLocationStore({ ttlMs: 100, now: () => now });
+  store.setLatest(12, { latitude: 1 });
+  now = 1_101;
+  assert.deepEqual(store.cleanup(), [12]);
+  assert.deepEqual(store.cleanup(), []);
+});

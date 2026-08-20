@@ -9,6 +9,8 @@ use App\Models\DriverCheckpointLog;
 use App\Models\DriverRequest;
 use App\Models\DeviceToken;
 use App\Models\PointAuditLog;
+use App\Models\PointTransaction;
+use App\Models\PointWallet;
 use App\Models\PrivateTripRequest;
 use App\Models\Rating;
 use App\Models\Role;
@@ -20,6 +22,7 @@ use App\Models\TripObjection;
 use App\Models\User;
 use App\Models\WaitingList;
 use App\Notifications\SystemEventNotification;
+use App\Services\PointWalletService;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Schema;
@@ -36,6 +39,8 @@ class DatabaseSeeder extends Seeder
         Schema::disableForeignKeyConstraints();
 
         PointAuditLog::truncate();
+        PointTransaction::truncate();
+        PointWallet::truncate();
         DeviceToken::truncate();
         \Illuminate\Support\Facades\DB::table('notifications')->truncate();
         Scouring::truncate();
@@ -486,6 +491,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         foreach ([$scouringOne, $scouringTwo, $scouringThree] as $scouring) {
+            app(PointWalletService::class)->creditFromScouring($scouring);
             PointAuditLog::create([
                 'scouring_id' => $scouring->id,
                 'actor_id' => $admin->id,

@@ -17,6 +17,11 @@ class Booking extends Model
         'dropoff_checkpoint_id',
         'seats_count',
         'status',
+        'payment_method',
+        'payment_status',
+        'paid_amount',
+        'paid_at',
+        'payment_reference',
         'boarded_at',
     ];
 
@@ -24,6 +29,8 @@ class Booking extends Model
     {
         return [
             'boarded_at' => 'datetime',
+            'paid_at' => 'datetime',
+            'paid_amount' => 'decimal:2',
         ];
     }
 

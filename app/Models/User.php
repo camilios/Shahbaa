@@ -26,6 +26,7 @@ class User extends Authenticatable
         'phone',
         'national_number',
         'father_name',
+        'mother_name',
         'gender',
         'role',
         'status',
@@ -124,5 +125,15 @@ class User extends Authenticatable
     public function deviceTokens()
     {
         return $this->hasMany(DeviceToken::class);
+    }
+
+    public function pointWallet()
+    {
+        return $this->hasOne(PointWallet::class);
+    }
+
+    public function pointTransactions()
+    {
+        return $this->hasMany(PointTransaction::class);
     }
 }

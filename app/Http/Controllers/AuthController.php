@@ -3,9 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -16,32 +17,47 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validated = $request->validate([
-            'full_name' => 'required|string|max:255',
-            'father_name' => 'required|string|max:255',
-            'mother_name' => 'nullable|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'role_id' => 'required|exists:roles,id',
-            'phone' => 'required|unique:users,phone',
-            'gender' => 'required|in:male,female',
-            'national_number' => 'required|unique:users,national_number',
-            'password' => 'required|min:8|confirmed',
-            'photo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'full_name' => ['required', 'string', 'max:255'],
+            'father_name' => ['required', 'string', 'max:255'],
+            'mother_name' => ['nullable', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'phone' => ['required', 'string', 'max:50', 'unique:users,phone'],
+            'gender' => ['required', 'in:male,female'],
+            'national_number' => ['required', 'string', 'max:255', 'unique:users,national_number'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
-        if ($request->hasFile('photo')) {
+        $photoPath = $request->hasFile('photo')
+            ? $request->file('photo')->store('users', 'public')
+            : null;
 
-            $validated['photo'] = $request
-                ->file('photo')
-                ->store('users', 'public');
-        }
-        $user = User::create($validated);
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $user = DB::transaction(function () use ($validated, $photoPath) {
+            $user = User::create([
+                'name' => $validated['full_name'],
+                'father_name' => $validated['father_name'],
+                'mother_name' => $validated['mother_name'] ?? null,
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'gender' => $validated['gender'],
+                'national_number' => $validated['national_number'],
+                'password' => $validated['password'],
+                'photo' => $photoPath,
+                'role' => 'customer',
+                'status' => 'active',
+            ]);
+
+            Role::create(['name' => 'Customer', 'user_id' => $user->id]);
+
+            return $user;
+        });
+
         return response()->json([
             'message' => 'Registered successfully',
-            'user' => $user->load('role'),
-            'token' => $token,
-        ]);
-
+            'user' => $user->load('roles'),
+            'token' => $user->createToken('auth_token')->plainTextToken,
+            'token_type' => 'Bearer',
+        ], 201);
     }
     /**
      * Login

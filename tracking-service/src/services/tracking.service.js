@@ -15,11 +15,10 @@ export class TrackingService {
   }
 
   startPublishing(tripId, socketId) {
-    const nowIso = new Date(this.now()).toISOString();
     this.trips.set(tripId, {
       publisherSocketId: socketId,
-      status: 'online',
-      lastUpdateAt: nowIso,
+      status: 'offline',
+      lastUpdateAt: null,
     });
     this.emitStatus(tripId);
   }
@@ -61,9 +60,19 @@ export class TrackingService {
     }
   }
 
+  revokePublisher(tripId, socketId) {
+    const state = this.trips.get(tripId);
+    if (!state || state.publisherSocketId !== socketId) return;
+    state.publisherSocketId = null;
+    state.status = 'offline';
+    this.emitStatus(tripId);
+  }
+
   checkStatuses() {
     const now = this.now();
-    this.locationStore.cleanup();
+    for (const tripId of this.locationStore.cleanup()) {
+      this.io.to(roomFor(tripId)).emit('trip:location:expired', { tripId });
+    }
     for (const [tripId, state] of this.trips) {
       if (state.status === 'stopped' || state.status === 'offline') continue;
       const age = now - Date.parse(state.lastUpdateAt);

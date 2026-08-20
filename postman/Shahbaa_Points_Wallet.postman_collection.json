@@ -1,0 +1,198 @@
+{
+  "info": {
+    "_postman_id": "f78f9995-97ed-4f45-92eb-7a5a9ce7e993",
+    "name": "Shahbaa - Points Wallet & Payment",
+    "description": "Customer points-wallet APIs. Run Customer Login first, then wallet/transactions/payment. The payment request expects points_booking_id to reference a pending, unpaid booking owned by the logged-in customer and departing in more than one hour.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Customer Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login succeeds', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('token');",
+                  "  pm.collectionVariables.set('customer_token', body.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{points_customer_email}}\",\n  \"password\": \"{{points_customer_password}}\"\n}"
+            },
+            "url": "{{base_url}}/login",
+            "description": "Logs in as a customer and automatically stores customer_token. Seeder example: customer2@shahbaa.test / password."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Points Wallet",
+      "item": [
+        {
+          "name": "Get Wallet Balance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Wallet is returned', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.wallet.balance).to.be.a('number');",
+                  "  pm.expect(body.summary).to.have.keys('total_earned', 'total_spent');",
+                  "  pm.collectionVariables.set('wallet_balance', body.wallet.balance);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customer_token}}", "type": "string" }]
+            },
+            "url": "{{base_url}}/customer/points/wallet",
+            "description": "Returns the current balance, total earned points, and total spent points."
+          }
+        },
+        {
+          "name": "Get Wallet Transactions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Transactions are returned', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.data).to.be.an('array');",
+                  "  pm.expect(body).to.have.property('current_page');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customer_token}}", "type": "string" }]
+            },
+            "url": "{{base_url}}/customer/points/transactions?page={{transactions_page}}",
+            "description": "Returns the authenticated customer's paginated credit, debit, and payment transactions."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Pay Booking With Points",
+      "item": [
+        {
+          "name": "Pay With Points",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Payment result is valid', () => pm.expect(pm.response.code).to.be.oneOf([200, 422]));",
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.booking.payment_method).to.eql('points');",
+                  "  pm.expect(body.booking.payment_status).to.eql('paid');",
+                  "  pm.expect(body.booking.status).to.eql('confirmed');",
+                  "  pm.expect(body.wallet.balance).to.be.a('number');",
+                  "  if (body.transaction) pm.collectionVariables.set('points_transaction_id', body.transaction.id);",
+                  "} else {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('errors');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{}" },
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customer_token}}", "type": "string" }]
+            },
+            "url": "{{base_url}}/customer/bookings/{{points_booking_id}}/pay-with-points",
+            "description": "Pays an owned pending/unpaid booking. A 422 response documents an expected business rejection such as insufficient balance or payment inside the final hour. Re-running an already successful request is safe and does not deduct twice."
+          }
+        },
+        {
+          "name": "Verify Balance After Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Updated wallet is returned', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) pm.expect(pm.response.json().wallet.balance).to.be.a('number');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{customer_token}}", "type": "string" }]
+            },
+            "url": "{{base_url}}/customer/points/wallet"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000/api", "type": "string" },
+    { "key": "points_customer_email", "value": "customer2@shahbaa.test", "type": "string" },
+    { "key": "points_customer_password", "value": "password", "type": "string" },
+    { "key": "customer_token", "value": "", "type": "string" },
+    { "key": "points_booking_id", "value": "2", "type": "string" },
+    { "key": "transactions_page", "value": "1", "type": "string" },
+    { "key": "wallet_balance", "value": "", "type": "string" },
+    { "key": "points_transaction_id", "value": "", "type": "string" }
+  ]
+}

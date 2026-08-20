@@ -17,13 +17,21 @@ test('tracking transitions through stale and offline using one monitor', () => {
   });
 
   service.startPublishing(1, 'driver-socket');
+  service.publish(1, 'driver-socket', {
+    latitude: 32,
+    longitude: 36,
+    recordedAt: new Date(now).toISOString(),
+  });
   now += 30_000;
   service.checkStatuses();
   assert.equal(service.currentStatus(1), 'stale');
   now += 60_000;
   service.checkStatuses();
   assert.equal(service.currentStatus(1), 'offline');
-  assert.deepEqual(events.map(([, payload]) => payload.status), ['online', 'stale', 'offline']);
+  assert.deepEqual(
+    events.filter(([event]) => event === 'tracking:status').map(([, payload]) => payload.status),
+    ['offline', 'online', 'stale', 'offline'],
+  );
 });
 
 test('disconnect keeps the latest location and announces offline', () => {

@@ -28,8 +28,13 @@ export class MemoryLocationStore {
   }
 
   cleanup() {
+    const expiredTripIds = [];
     for (const [tripId, entry] of this.locations) {
-      if (entry.expiresAt <= this.now()) this.locations.delete(tripId);
+      if (entry.expiresAt <= this.now()) {
+        this.locations.delete(tripId);
+        expiredTripIds.push(tripId);
+      }
     }
+    return expiredTripIds;
   }
 }

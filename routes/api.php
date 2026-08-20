@@ -9,6 +9,8 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CheckpointController;
 use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\CustomerTripController;
+use App\Http\Controllers\CustomerPointWalletController;
+use App\Http\Controllers\CustomerPointsPaymentController;
 use App\Http\Controllers\DeviceTokenController;
 use App\Http\Controllers\DriverAuthController;
 use App\Http\Controllers\DriverCheckpointLogController;
@@ -55,6 +57,9 @@ Route::middleware('api')->group(function () {
         Route::get('customer/trips', [CustomerTripController::class, 'myTrips']);
         Route::get('customer/governorates', [CustomerTripController::class, 'governorates']);
         Route::post('customer/checkpoints/by-governorate', [CustomerTripController::class, 'checkpointsByGovernorate']);
+        Route::get('customer/points/wallet', [CustomerPointWalletController::class, 'show']);
+        Route::get('customer/points/transactions', [CustomerPointWalletController::class, 'transactions']);
+        Route::post('customer/bookings/{booking}/pay-with-points', CustomerPointsPaymentController::class);
         Route::post('customer/trips/{trip}/ticket/before-scan', [CustomerTripController::class, 'detailsBeforeScan']);
         Route::post('customer/trips/{trip}/ticket/after-scan', [CustomerTripController::class, 'detailsAfterScan']);
 

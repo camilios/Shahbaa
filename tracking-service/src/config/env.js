@@ -18,15 +18,27 @@ export function loadConfig(source = process.env) {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
+  const locationTtlMs = integer(source.LOCATION_TTL_SECONDS, 120, 'LOCATION_TTL_SECONDS') * 1000;
+  const staleAfterMs = integer(source.TRACKING_STALE_AFTER_SECONDS, 30, 'TRACKING_STALE_AFTER_SECONDS') * 1000;
+  const offlineAfterMs = integer(source.TRACKING_OFFLINE_AFTER_SECONDS, 90, 'TRACKING_OFFLINE_AFTER_SECONDS') * 1000;
+
+  if (staleAfterMs >= offlineAfterMs) {
+    throw new Error('TRACKING_STALE_AFTER_SECONDS must be less than TRACKING_OFFLINE_AFTER_SECONDS');
+  }
+  if (locationTtlMs < offlineAfterMs) {
+    throw new Error('LOCATION_TTL_SECONDS must be greater than or equal to TRACKING_OFFLINE_AFTER_SECONDS');
+  }
+
   return {
     nodeEnv,
     port: integer(source.PORT, 4000, 'PORT'),
     laravelApiUrl: (source.LARAVEL_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, ''),
     serviceSecret,
     allowedOrigins,
-    locationTtlMs: integer(source.LOCATION_TTL_SECONDS, 120, 'LOCATION_TTL_SECONDS') * 1000,
-    staleAfterMs: integer(source.TRACKING_STALE_AFTER_SECONDS, 30, 'TRACKING_STALE_AFTER_SECONDS') * 1000,
-    offlineAfterMs: integer(source.TRACKING_OFFLINE_AFTER_SECONDS, 90, 'TRACKING_OFFLINE_AFTER_SECONDS') * 1000,
+    locationTtlMs,
+    staleAfterMs,
+    offlineAfterMs,
+    authorizationRefreshMs: integer(source.AUTHORIZATION_REFRESH_SECONDS, 30, 'AUTHORIZATION_REFRESH_SECONDS') * 1000,
     laravelTimeoutMs: integer(source.LARAVEL_REQUEST_TIMEOUT_MS, 5000, 'LARAVEL_REQUEST_TIMEOUT_MS'),
     maxUpdatesPerMinute: integer(source.MAX_LOCATION_UPDATES_PER_MINUTE, 12, 'MAX_LOCATION_UPDATES_PER_MINUTE'),
     maxLocationAgeMs: integer(source.MAX_LOCATION_AGE_SECONDS, 120, 'MAX_LOCATION_AGE_SECONDS') * 1000,

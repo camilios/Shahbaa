@@ -1,0 +1,319 @@
+{
+  "info": {
+    "_postman_id": "9a5c33a5-7604-4c64-9139-61ba5edb3430",
+    "name": "Shahbaa - Complete Authentication API",
+    "description": "Complete authentication flows for customer, administrator, and driver accounts. Successful login/register requests automatically save their Bearer tokens into collection variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Customer Authentication",
+      "item": [
+        {
+          "name": "Register Customer",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const stamp = Date.now().toString();",
+                  "pm.collectionVariables.set('registered_customer_email', `customer.${stamp}@example.com`);",
+                  "pm.collectionVariables.set('registered_customer_phone', `09${stamp.slice(-8)}`);",
+                  "pm.collectionVariables.set('registered_customer_national_number', `N${stamp}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Registration succeeds', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('token');",
+                  "  pm.collectionVariables.set('customer_token', body.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Postman Customer\",\n  \"father_name\": \"Postman Father\",\n  \"mother_name\": \"Postman Mother\",\n  \"email\": \"{{registered_customer_email}}\",\n  \"phone\": \"{{registered_customer_phone}}\",\n  \"gender\": \"male\",\n  \"national_number\": \"{{registered_customer_national_number}}\",\n  \"password\": \"{{customer_password}}\",\n  \"password_confirmation\": \"{{customer_password}}\"\n}"
+            },
+            "url": "{{base_url}}/register",
+            "description": "Creates an active customer and saves the returned token. The server assigns the Customer role securely; role_id is not required."
+          }
+        },
+        {
+          "name": "Customer Login",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Login succeeds', () => pm.response.to.have.status(200));",
+                "if (pm.response.code === 200) {",
+                "  const body = pm.response.json();",
+                "  pm.expect(body.token_type).to.eql('Bearer');",
+                "  pm.collectionVariables.set('customer_token', body.token);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{customer_email}}\",\n  \"password\": \"{{customer_password}}\"\n}" },
+            "url": "{{base_url}}/login"
+          }
+        },
+        {
+          "name": "Customer Login - Wrong Password",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["pm.test('Invalid credentials are rejected', () => pm.response.to.have.status(422));"]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{customer_email}}\",\n  \"password\": \"definitely-wrong\"\n}" },
+            "url": "{{base_url}}/login"
+          }
+        },
+        {
+          "name": "Customer Profile",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Authenticated profile is returned', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customer_token}}", "type": "text" }],
+            "url": "{{base_url}}/profile"
+          }
+        },
+        {
+          "name": "Update Customer Profile",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Profile update succeeds', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customer_token}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{customer_updated_email}}\"\n}" },
+            "url": "{{base_url}}/update_profile"
+          }
+        },
+        {
+          "name": "Customer Logout",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Logout succeeds', () => pm.response.to.have.status(200));",
+                "if (pm.response.code === 200) pm.collectionVariables.unset('customer_token');"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customer_token}}", "type": "text" }],
+            "url": "{{base_url}}/logout"
+          }
+        },
+        {
+          "name": "Customer Profile - Revoked or Missing Token",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Unauthenticated request is rejected', () => pm.response.to.have.status(401));"] }
+          }],
+          "request": { "method": "GET", "header": [], "url": "{{base_url}}/profile" }
+        }
+      ]
+    },
+    {
+      "name": "2. Administrator Authentication",
+      "item": [
+        {
+          "name": "Admin Login",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Active admin can log in', () => pm.response.to.have.status(200));",
+                "if (pm.response.code === 200) {",
+                "  const body = pm.response.json();",
+                "  pm.expect(body.user.role.toLowerCase()).to.eql('admin');",
+                "  pm.collectionVariables.set('admin_token', body.token);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}" },
+            "url": "{{base_url}}/admin/login"
+          }
+        },
+        {
+          "name": "Admin Login - Wrong Password",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Invalid credentials are rejected', () => pm.response.to.have.status(422));"] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"definitely-wrong\"\n}" },
+            "url": "{{base_url}}/admin/login"
+          }
+        },
+        {
+          "name": "Admin Protected Request",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Admin token accesses protected endpoint', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }],
+            "url": "{{base_url}}/admin/reports?period=last_7_days"
+          }
+        },
+        {
+          "name": "Admin Logout",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Logout succeeds', () => pm.response.to.have.status(200));",
+                "if (pm.response.code === 200) pm.collectionVariables.unset('admin_token');"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}", "type": "text" }],
+            "url": "{{base_url}}/admin/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Driver Authentication",
+      "item": [
+        {
+          "name": "Driver Login",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Active driver can log in', () => pm.response.to.have.status(200));",
+                "if (pm.response.code === 200) {",
+                "  const body = pm.response.json();",
+                "  pm.expect(body.user.role.toLowerCase()).to.eql('driver');",
+                "  pm.collectionVariables.set('driver_token', body.token);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{driver_email}}\",\n  \"password\": \"{{driver_password}}\"\n}" },
+            "url": "{{base_url}}/driver/login"
+          }
+        },
+        {
+          "name": "Driver Login - Wrong Password",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Invalid credentials are rejected', () => pm.response.to.have.status(422));"] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{driver_email}}\",\n  \"password\": \"definitely-wrong\"\n}" },
+            "url": "{{base_url}}/driver/login"
+          }
+        },
+        {
+          "name": "Driver Profile",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": ["pm.test('Driver profile is returned', () => pm.response.to.have.status(200));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}", "type": "text" }],
+            "url": "{{base_url}}/driver/profile"
+          }
+        },
+        {
+          "name": "Driver Logout",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Logout succeeds', () => pm.response.to.have.status(200));",
+                "if (pm.response.code === 200) pm.collectionVariables.unset('driver_token');"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{driver_token}}", "type": "text" }],
+            "url": "{{base_url}}/driver/logout"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000/api", "type": "string" },
+    { "key": "customer_email", "value": "customer@example.com", "type": "string" },
+    { "key": "customer_password", "value": "password", "type": "string" },
+    { "key": "customer_updated_email", "value": "customer.updated@gmail.com", "type": "string" },
+    { "key": "customer_role_id", "value": "1", "type": "string" },
+    { "key": "admin_email", "value": "admin@example.com", "type": "string" },
+    { "key": "admin_password", "value": "password", "type": "string" },
+    { "key": "driver_email", "value": "driver@example.com", "type": "string" },
+    { "key": "driver_password", "value": "password", "type": "string" },
+    { "key": "customer_token", "value": "", "type": "string" },
+    { "key": "admin_token", "value": "", "type": "string" },
+    { "key": "driver_token", "value": "", "type": "string" },
+    { "key": "registered_customer_email", "value": "", "type": "string" },
+    { "key": "registered_customer_phone", "value": "", "type": "string" },
+    { "key": "registered_customer_national_number", "value": "", "type": "string" }
+  ]
+}
