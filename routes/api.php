@@ -5,6 +5,7 @@ use App\Http\Controllers\AdminBookingConfirmationController;
 use App\Http\Controllers\AdminPointAuditLogController;
 use App\Http\Controllers\AdminReportsController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CheckpointController;
 use App\Http\Controllers\ComplaintController;
@@ -29,6 +30,7 @@ use App\Http\Controllers\ScouringController;
 use App\Http\Controllers\TripController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WaitingListController;
+use App\Http\Controllers\CustomerStripeCheckoutController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('api')->group(function () {
@@ -41,6 +43,21 @@ Route::middleware('api')->group(function () {
     // Customer app auth.
     Route::post('login', [AuthController::class, 'login']);
     Route::post('register', [AuthController::class, 'register']);
+
+    // Stripe calls this endpoint directly, so it must remain outside auth:sanctum.
+    Route::post('stripe/webhook', StripeWebhookController::class);
+
+    Route::get('stripe/success', function () {
+        return response()->json([
+            'message' => 'Payment completed. Confirmation is being processed.',
+        ]);
+    });
+
+    Route::get('stripe/cancel', function () {
+        return response()->json([
+            'message' => 'Stripe payment was cancelled.',
+        ]);
+    });
 
     Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
@@ -60,6 +77,7 @@ Route::middleware('api')->group(function () {
         Route::get('customer/points/wallet', [CustomerPointWalletController::class, 'show']);
         Route::get('customer/points/transactions', [CustomerPointWalletController::class, 'transactions']);
         Route::post('customer/bookings/{booking}/pay-with-points', CustomerPointsPaymentController::class);
+        Route::post('customer/bookings/{booking}/stripe-checkout', CustomerStripeCheckoutController::class);
         Route::post('customer/trips/{trip}/ticket/before-scan', [CustomerTripController::class, 'detailsBeforeScan']);
         Route::post('customer/trips/{trip}/ticket/after-scan', [CustomerTripController::class, 'detailsAfterScan']);
 
