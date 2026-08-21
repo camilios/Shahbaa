@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminBookingConfirmationController;
+use App\Http\Controllers\AdminGuestBookingController;
 use App\Http\Controllers\AdminPointAuditLogController;
 use App\Http\Controllers\AdminReportsController;
 use App\Http\Controllers\AuthController;
@@ -187,6 +188,7 @@ Route::middleware('api')->group(function () {
 
         Route::middleware('admin')->group(function () {
             Route::post('admin/bookings/{booking}/confirm', AdminBookingConfirmationController::class);
+            Route::post('admin/guest-bookings', AdminGuestBookingController::class);
             Route::get('admin/point-audit-logs', AdminPointAuditLogController::class);
             Route::get('admin/reports', [AdminReportsController::class, 'index']);
             Route::get('admin/reports/export', [AdminReportsController::class, 'export']);
@@ -377,7 +379,6 @@ Route::middleware('api')->group(function () {
             'destroy',
         ]);
 
-        // Customer booking aliases and search endpoints from mohamd branch.
         Route::post('storebooking', [
             BookingController::class,
             'store',

@@ -1,0 +1,345 @@
+{
+  "info": {
+    "_postman_id": "6b9a31ad-e277-46c8-a193-495989395505",
+    "name": "Shahbaa - QR Ticket API",
+    "description": "End-to-end QR ticket tests. Run the collection in order after seeding the database with `php artisan db:seed`. It verifies customer QR ownership and stability, confirmed booking scans, repeated scans, pending booking rejection, invalid QR rejection, trip matching, and driver ownership.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000/api" },
+    { "key": "customer_confirmed_email", "value": "customer1@shahbaa.test" },
+    { "key": "customer_pending_email", "value": "customer2@shahbaa.test" },
+    { "key": "customer_password", "value": "password", "type": "secret" },
+    { "key": "driver_one_email", "value": "driver1@shahbaa.test" },
+    { "key": "driver_two_email", "value": "driver2@shahbaa.test" },
+    { "key": "driver_password", "value": "password", "type": "secret" },
+    { "key": "confirmed_trip_id", "value": "1" },
+    { "key": "pending_trip_id", "value": "2" },
+    { "key": "confirmed_customer_token", "value": "" },
+    { "key": "pending_customer_token", "value": "" },
+    { "key": "driver_one_token", "value": "" },
+    { "key": "driver_two_token", "value": "" },
+    { "key": "confirmed_customer_qr_token", "value": "" },
+    { "key": "pending_customer_qr_token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login Customer With Confirmed Booking",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Customer login succeeds', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.expect(body.user.role).to.eql('customer');",
+              "pm.collectionVariables.set('confirmed_customer_token', body.token);"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{customer_confirmed_email}}\",\n  \"password\": \"{{customer_password}}\"\n}" },
+            "url": "{{base_url}}/login"
+          }
+        },
+        {
+          "name": "Login Customer With Pending Booking",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Customer login succeeds', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('pending_customer_token', pm.response.json().token);"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{customer_pending_email}}\",\n  \"password\": \"{{customer_password}}\"\n}" },
+            "url": "{{base_url}}/login"
+          }
+        },
+        {
+          "name": "Login Driver One",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Driver one login succeeds', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('driver_one_token', pm.response.json().token);"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{driver_one_email}}\",\n  \"password\": \"{{driver_password}}\"\n}" },
+            "url": "{{base_url}}/driver/login"
+          }
+        },
+        {
+          "name": "Login Driver Two",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Driver two login succeeds', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('driver_two_token', pm.response.json().token);"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{driver_two_email}}\",\n  \"password\": \"{{driver_password}}\"\n}" },
+            "url": "{{base_url}}/driver/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Customer QR Generation",
+      "item": [
+        {
+          "name": "Create/Get Confirmed Customer QR",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('QR generation succeeds', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.expect(body.qr).to.be.a('string').and.to.include('<svg');",
+              "pm.expect(body.qr_token).to.be.a('string').and.not.empty;",
+              "pm.collectionVariables.set('confirmed_customer_qr_token', body.qr_token);"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{confirmed_customer_token}}", "type": "text" }],
+            "url": "{{base_url}}/qr",
+            "description": "Returns the authenticated customer's SVG QR and stable qr_token. No user id is accepted or required."
+          }
+        },
+        {
+          "name": "Get QR Again - Token Must Stay Stable",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Second QR request succeeds', () => pm.response.to.have.status(200));",
+              "pm.test('QR token remains stable', () => pm.expect(pm.response.json().qr_token).to.eql(pm.collectionVariables.get('confirmed_customer_qr_token')));"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{confirmed_customer_token}}", "type": "text" }],
+            "url": "{{base_url}}/qr"
+          }
+        },
+        {
+          "name": "Create/Get Pending Customer QR",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('QR generation succeeds independently of booking status', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('pending_customer_qr_token', pm.response.json().qr_token);"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{pending_customer_token}}", "type": "text" }],
+            "url": "{{base_url}}/qr"
+          }
+        },
+        {
+          "name": "Create QR Without Authentication - Rejected",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Unauthenticated request is rejected', () => pm.response.to.have.status(401));"
+            ] }
+          }],
+          "request": { "method": "POST", "url": "{{base_url}}/qr" }
+        },
+        {
+          "name": "Driver Cannot Create Customer QR",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Driver QR request is forbidden', () => pm.response.to.have.status(403));",
+              "pm.expect(pm.response.json().message).to.eql('QR tickets are available to customers only.');"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{driver_one_token}}", "type": "text" }],
+            "url": "{{base_url}}/qr"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Driver QR Scanning",
+      "item": [
+        {
+          "name": "Scan Confirmed Booking - Success",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Confirmed passenger is accepted', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.expect(body.message).to.be.oneOf(['Passenger verified and boarded.', 'Passenger already boarded.']);",
+              "pm.expect(body.passenger.status).to.eql('booked');",
+              "pm.expect(body.passenger.boarded_at).not.to.eql(null);"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driver_one_token}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"qr_token\": \"{{confirmed_customer_qr_token}}\"\n}" },
+            "url": "{{base_url}}/driver/trips/{{confirmed_trip_id}}/scan"
+          }
+        },
+        {
+          "name": "Scan Same QR Again - Already Boarded",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Repeated scan remains successful and idempotent', () => pm.response.to.have.status(200));",
+              "pm.expect(pm.response.json().message).to.eql('Passenger already boarded.');",
+              "pm.expect(pm.response.json().passenger.status).to.eql('booked');"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driver_one_token}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"qr_token\": \"{{confirmed_customer_qr_token}}\"\n}" },
+            "url": "{{base_url}}/driver/trips/{{confirmed_trip_id}}/scan"
+          }
+        },
+        {
+          "name": "Scan Pending Booking - Rejected",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Pending booking is rejected', () => pm.response.to.have.status(422));",
+              "pm.expect(pm.response.json().message).to.eql('This passenger booking is not confirmed.');"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driver_two_token}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"qr_token\": \"{{pending_customer_qr_token}}\"\n}" },
+            "url": "{{base_url}}/driver/trips/{{pending_trip_id}}/scan"
+          }
+        },
+        {
+          "name": "Scan Passenger On Wrong Trip - Rejected",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Passenger without a booking on this trip is rejected', () => pm.response.to.have.status(422));",
+              "pm.expect(pm.response.json().message).to.eql('This passenger is not booked on this trip.');"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driver_two_token}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"qr_token\": \"{{confirmed_customer_qr_token}}\"\n}" },
+            "url": "{{base_url}}/driver/trips/{{pending_trip_id}}/scan"
+          }
+        },
+        {
+          "name": "Scan Invalid QR Token - Rejected",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Unknown QR token is rejected', () => pm.response.to.have.status(404));",
+              "pm.expect(pm.response.json().message).to.eql('Invalid ticket: no passenger matches this QR code.');"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driver_one_token}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"qr_token\": \"00000000-0000-0000-0000-000000000000\"\n}" },
+            "url": "{{base_url}}/driver/trips/{{confirmed_trip_id}}/scan"
+          }
+        },
+        {
+          "name": "Scan Without QR Token - Validation Error",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Missing QR token is rejected', () => pm.response.to.have.status(422));",
+              "pm.expect(pm.response.json().errors).to.have.property('qr_token');"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driver_one_token}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": "{{base_url}}/driver/trips/{{confirmed_trip_id}}/scan"
+          }
+        },
+        {
+          "name": "Driver Cannot Scan Another Driver's Trip",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Wrong driver is forbidden', () => pm.response.to.have.status(403));",
+              "pm.expect(pm.response.json().message).to.eql('This trip does not belong to you.');"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driver_two_token}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"qr_token\": \"{{confirmed_customer_qr_token}}\"\n}" },
+            "url": "{{base_url}}/driver/trips/{{confirmed_trip_id}}/scan"
+          }
+        },
+        {
+          "name": "Unauthenticated Scan - Rejected",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Unauthenticated scan is rejected', () => pm.response.to.have.status(401));"
+            ] }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"qr_token\": \"{{confirmed_customer_qr_token}}\"\n}" },
+            "url": "{{base_url}}/driver/trips/{{confirmed_trip_id}}/scan"
+          }
+        }
+      ]
+    }
+  ]
+}

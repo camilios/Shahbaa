@@ -4,13 +4,11 @@ namespace App\Observers;
 
 use App\Models\PointAuditLog;
 use App\Models\Scouring;
-use App\Services\PointWalletService;
 
 class ScouringObserver
 {
     public function created(Scouring $scouring): void
     {
-        app(PointWalletService::class)->creditFromScouring($scouring);
         $this->record($scouring, 'granted', 0, (int) $scouring->points);
     }
 
@@ -20,14 +18,12 @@ class ScouringObserver
         $after = (int) $scouring->points;
 
         if ($before !== $after || $scouring->wasChanged(['customer_id', 'booking_id', 'driver_checkpoint_log_id'])) {
-            app(PointWalletService::class)->adjustFromScouring($scouring, $before, $after);
             $this->record($scouring, 'adjusted', $before, $after);
         }
     }
 
     public function deleting(Scouring $scouring): void
     {
-        app(PointWalletService::class)->revokeScouring($scouring);
         $this->record($scouring, 'revoked', (int) $scouring->points, 0);
     }
 

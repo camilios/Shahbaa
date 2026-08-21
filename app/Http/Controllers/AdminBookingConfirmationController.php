@@ -41,7 +41,17 @@ class AdminBookingConfirmationController extends Controller
                 ]);
             }
 
-            $lockedBooking->update(['status' => 'confirmed']);
+            $lockedBooking->update([
+                'status' => 'confirmed',
+                'payment_method' => $lockedBooking->payment_method ?? 'cash',
+                'payment_status' => 'paid',
+                'paid_amount' => $lockedBooking->paid_amount > 0
+                    ? $lockedBooking->paid_amount
+                    : (float) $lockedBooking->trip->money_price * $lockedBooking->seats_count,
+                'paid_at' => $lockedBooking->paid_at ?? now(),
+                'payment_reference' => $lockedBooking->payment_reference
+                    ?? 'CASH-'.$lockedBooking->id.'-'.now()->format('YmdHis'),
+            ]);
 
             return response()->json([
                 'message' => 'Booking confirmed after payment verification.',

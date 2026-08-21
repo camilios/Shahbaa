@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Booking;
+use App\Models\PointAuditLog;
 use App\Models\PointTransaction;
 use App\Models\PointWallet;
 use App\Models\Scouring;
@@ -11,6 +13,44 @@ use Illuminate\Validation\ValidationException;
 
 class PointWalletService
 {
+    public function creditForConfirmedBooking(Booking $booking): ?PointTransaction
+    {
+        $booking->loadMissing(['trip', 'user']);
+        $amount = (int) ($booking->trip?->earned_points ?? 0);
+
+        if ($amount <= 0 || ! $booking->user) {
+            return null;
+        }
+
+        $transaction = $this->change(
+            $booking->user,
+            'credit',
+            $amount,
+            "Points earned from confirmed booking #{$booking->id}.",
+            "booking:{$booking->id}:confirmation-reward",
+            null,
+            $booking->id,
+            ['trip_id' => $booking->trip_id, 'reason' => 'booking_confirmed']
+        );
+
+        if ($transaction->wasRecentlyCreated) {
+            PointAuditLog::create([
+                'actor_id' => auth()->id(),
+                'customer_id' => $booking->user_id,
+                'booking_id' => $booking->id,
+                'action' => 'granted',
+                'points_before' => $transaction->balance_before,
+                'points_after' => $transaction->balance_after,
+                'points_delta' => $amount,
+                'ip_address' => request()?->ip(),
+                'user_agent' => request()?->userAgent(),
+                'context' => ['trip_id' => $booking->trip_id, 'reason' => 'booking_confirmed'],
+            ]);
+        }
+
+        return $transaction;
+    }
+
     public function wallet(User $user, bool $lock = false): PointWallet
     {
         PointWallet::firstOrCreate(['user_id' => $user->id], ['balance' => 0]);

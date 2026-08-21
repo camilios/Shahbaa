@@ -84,7 +84,7 @@ class AuthController extends Controller
             'message' => 'Login successful',
             'token' => $token,
             'token_type' => 'Bearer',
-            'user' => $user->load('role'),
+            'user' => $user,
         ]);
     }
 

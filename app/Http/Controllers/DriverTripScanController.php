@@ -39,12 +39,18 @@ class DriverTripScanController extends Controller
 
         $booking = $trip->bookings()
             ->where('user_id', $passenger->id)
-            ->where('status', '!=', 'cancelled')
+            ->whereIn('status', ['confirmed', 'booked'])
             ->first();
 
         if (! $booking) {
+            $hasBooking = $trip->bookings()
+                ->where('user_id', $passenger->id)
+                ->exists();
+
             return response()->json([
-                'message' => 'This passenger is not booked on this trip.',
+                'message' => $hasBooking
+                    ? 'This passenger booking is not confirmed.'
+                    : 'This passenger is not booked on this trip.',
                 'passenger' => [
                     'id' => $passenger->id,
                     'name' => $passenger->name,

@@ -161,6 +161,34 @@ class AdminApplicationManagementTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('seats_count');
     }
 
+    public function test_booking_is_allowed_until_departure_and_unconfirmed_booking_is_deleted_in_last_hour(): void
+    {
+        Sanctum::actingAs($this->user('customer'));
+        $driver = $this->user('driver');
+        [$from, $to] = $this->checkpoints();
+        $trip = $this->trip($driver, [$from, $to], 2);
+        $trip->update([
+            'departure_date' => now()->addMinutes(30),
+            'arrival_date' => now()->addHours(2),
+        ]);
+
+        $response = $this->postJson('/api/bookings', [
+            'trip_id' => $trip->id,
+            'pickup_checkpoint_id' => $from->id,
+            'dropoff_checkpoint_id' => $to->id,
+            'seats_count' => 1,
+        ])->assertCreated();
+
+        $bookingId = $response->json('id');
+        $this->assertSame(1, $trip->fresh()->available_seats);
+
+        $this->artisan('bookings:delete-unconfirmed')->assertSuccessful();
+
+        $this->assertDatabaseMissing('bookings', ['id' => $bookingId]);
+        $this->assertSame(2, $trip->fresh()->available_seats);
+        $this->assertNull($trip->seats()->first()->booking_id);
+    }
+
     public function test_customer_is_automatically_added_to_waiting_list_when_trip_is_full(): void
     {
         Sanctum::actingAs($this->user('customer'));
@@ -278,6 +306,76 @@ class AdminApplicationManagementTest extends TestCase
             ->assertJsonPath('seats.0.seat_number', 'S01');
     }
 
+    public function test_admin_can_create_an_office_booking_for_a_guest_without_an_account(): void
+    {
+        $admin = $this->user('admin');
+        $driver = $this->user('driver');
+        [$from, $to] = $this->checkpoints();
+        $trip = $this->trip($driver, [$from, $to], 3);
+        $trip->update([
+            'departure_date' => now()->addDay(),
+            'arrival_date' => now()->addDay()->addHours(2),
+        ]);
+        Sanctum::actingAs($admin);
+
+        $response = $this->postJson('/api/admin/guest-bookings', [
+            'guest_name' => 'Guest Passenger',
+            'guest_phone' => '0999123456',
+            'guest_gender' => 'female',
+            'guest_national_number' => 'GUEST-123',
+            'trip_id' => $trip->id,
+            'pickup_checkpoint_id' => $from->id,
+            'dropoff_checkpoint_id' => $to->id,
+            'seats_count' => 1,
+            'seat_numbers' => ['S02'],
+        ])->assertCreated()
+            ->assertJsonPath('booking.user_id', null)
+            ->assertJsonPath('booking.booking_source', 'office_guest')
+            ->assertJsonPath('booking.guest_name', 'Guest Passenger')
+            ->assertJsonPath('booking.guest_gender', 'female')
+            ->assertJsonPath('booking.status', 'pending')
+            ->assertJsonPath('booking.seats.0.seat_number', 'S02');
+
+        $bookingId = $response->json('booking.id');
+        $this->assertDatabaseHas('bookings', [
+            'id' => $bookingId,
+            'user_id' => null,
+            'guest_phone' => '0999123456',
+            'guest_gender' => 'female',
+        ]);
+        $this->assertSame(2, $trip->fresh()->available_seats);
+        $this->assertDatabaseHas('seats', [
+            'trip_id' => $trip->id,
+            'seat_number' => 'S02',
+            'booking_id' => $bookingId,
+        ]);
+    }
+
+    public function test_guest_booking_requires_admin_and_valid_gender(): void
+    {
+        $driver = $this->user('driver');
+        [$from, $to] = $this->checkpoints();
+        $trip = $this->trip($driver, [$from, $to], 2);
+        $trip->update(['departure_date' => now()->addDay()]);
+        $payload = [
+            'guest_name' => 'Guest Passenger',
+            'guest_phone' => '0999123456',
+            'guest_gender' => 'unknown',
+            'trip_id' => $trip->id,
+            'pickup_checkpoint_id' => $from->id,
+            'dropoff_checkpoint_id' => $to->id,
+            'seats_count' => 1,
+        ];
+
+        Sanctum::actingAs($this->user('customer'));
+        $this->postJson('/api/admin/guest-bookings', $payload)->assertForbidden();
+
+        Sanctum::actingAs($this->user('admin'));
+        $this->postJson('/api/admin/guest-bookings', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('guest_gender');
+    }
+
     public function test_booking_assigns_the_explicitly_selected_seats(): void
     {
         Sanctum::actingAs($this->user('customer'));
@@ -380,7 +478,7 @@ class AdminApplicationManagementTest extends TestCase
             'pickup_checkpoint_id' => $from->id,
             'dropoff_checkpoint_id' => $to->id,
             'seats_count' => 1,
-            'status' => 'pending',
+            'status' => 'confirmed',
         ]);
         Sanctum::actingAs($driver);
 
@@ -399,6 +497,54 @@ class AdminApplicationManagementTest extends TestCase
         ])->assertOk()
             ->assertJsonPath('message', 'Passenger already boarded.')
             ->assertJsonPath('passenger.status', 'booked');
+    }
+
+    public function test_driver_scan_rejects_an_unconfirmed_booking(): void
+    {
+        $driver = $this->user('driver');
+        $customer = $this->user('customer');
+        $customer->forceFill(['qr_token' => 'pending-customer-ticket'])->save();
+        [$from, $to] = $this->checkpoints();
+        $trip = $this->trip($driver, [$from, $to], 2);
+        $booking = Booking::create([
+            'user_id' => $customer->id,
+            'driver_id' => $driver->id,
+            'trip_id' => $trip->id,
+            'pickup_checkpoint_id' => $from->id,
+            'dropoff_checkpoint_id' => $to->id,
+            'seats_count' => 1,
+            'status' => 'pending',
+        ]);
+        Sanctum::actingAs($driver);
+
+        $this->postJson("/api/driver/trips/{$trip->id}/scan", [
+            'qr_token' => 'pending-customer-ticket',
+        ])->assertUnprocessable()
+            ->assertJsonPath('message', 'This passenger booking is not confirmed.');
+
+        $booking->refresh();
+        $this->assertSame('pending', $booking->status);
+        $this->assertNull($booking->boarded_at);
+    }
+
+    public function test_customer_qr_belongs_to_authenticated_customer_and_is_stable(): void
+    {
+        $customer = $this->user('customer');
+        $otherCustomer = $this->user('customer');
+        Sanctum::actingAs($customer);
+
+        $firstResponse = $this->postJson('/api/qr', ['id' => $otherCustomer->id])
+            ->assertOk()
+            ->assertJsonStructure(['qr', 'qr_token']);
+
+        $token = $firstResponse->json('qr_token');
+        $this->assertNotEmpty($token);
+        $this->assertSame($token, $customer->fresh()->qr_token);
+        $this->assertNull($otherCustomer->fresh()->qr_token);
+
+        $this->postJson('/api/qr')
+            ->assertOk()
+            ->assertJsonPath('qr_token', $token);
     }
 
     public function test_admin_can_view_and_reply_to_ratings_and_complaints(): void

@@ -65,11 +65,11 @@ class BookingController extends Controller
 
             if (
                 $trip->departure_date
-                && $trip->departure_date->lte(now()->addHours(2))
+                && $trip->departure_date->lte(now())
             ) {
                 throw ValidationException::withMessages([
                     'trip_id' => [
-                        'Bookings must be created at least two hours before departure.',
+                        'Bookings cannot be created after the trip has departed.',
                     ],
                 ]);
             }
@@ -140,6 +140,7 @@ class BookingController extends Controller
 
             $data['user_id'] = $userId;
             $data['driver_id'] = $trip->driver_id;
+            $data['status'] = 'pending';
 
             $booking = Booking::create($data);
 

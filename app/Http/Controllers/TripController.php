@@ -14,7 +14,7 @@ class TripController extends Controller
     {
         return Trip::with([
             'driver',
-            'seats',
+            'seats.booking.user',
             'checkpoints.checkpoint',
             'ratings.repliedBy',
         ])->paginate(20);
@@ -24,7 +24,7 @@ class TripController extends Controller
     {
         return $trip->load([
             'driver',
-            'seats',
+            'seats.booking.user',
             'bookedSeats',
             'checkpoints.checkpoint',
             'ratings.repliedBy',
@@ -47,7 +47,7 @@ class TripController extends Controller
 
             return $trip->load([
                 'driver',
-                'seats',
+                'seats.booking.user',
                 'checkpoints.checkpoint',
             ]);
         });
@@ -92,7 +92,7 @@ class TripController extends Controller
 
             return $trip->load([
                 'driver',
-                'seats',
+                'seats.booking.user',
                 'checkpoints.checkpoint',
             ]);
         });

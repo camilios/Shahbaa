@@ -22,9 +22,22 @@ class AdminBookingConfirmationTest extends TestCase
         $this->postJson("/api/admin/bookings/{$booking->id}/confirm", [
             'payment_verified' => true,
         ])->assertOk()
-            ->assertJsonPath('booking.status', 'confirmed');
+            ->assertJsonPath('booking.status', 'confirmed')
+            ->assertJsonPath('booking.payment_status', 'paid')
+            ->assertJsonPath('booking.payment_method', 'cash');
 
-        $this->assertSame('confirmed', $booking->fresh()->status);
+        $booking->refresh();
+        $this->assertSame('confirmed', $booking->status);
+        $this->assertNotNull($booking->paid_at);
+        $this->assertDatabaseHas('point_wallets', [
+            'user_id' => $booking->user_id,
+            'balance' => 25,
+        ]);
+        $this->assertDatabaseHas('point_transactions', [
+            'booking_id' => $booking->id,
+            'type' => 'credit',
+            'amount' => 25,
+        ]);
     }
 
     public function test_payment_verification_is_required(): void
@@ -82,6 +95,8 @@ class AdminBookingConfirmationTest extends TestCase
             'arrival_date' => $departure->copy()->addHours(2),
             'total_seats' => 10,
             'available_seats' => 9,
+            'money_price' => 100,
+            'earned_points' => 25,
         ]);
 
         return Booking::create([

@@ -178,15 +178,23 @@ class UserController extends Controller
 
     public function Qr(Request $request)
     {
-        $user = User::find($request->id);
+        $user = $request->user();
 
-        $user->qr_token = Str::uuid();
-        $user->save();
+        if (strtolower((string) $user->role) !== 'customer') {
+            return response()->json([
+                'message' => 'QR tickets are available to customers only.',
+            ], 403);
+        }
+
+        if (! $user->qr_token) {
+            $user->forceFill(['qr_token' => (string) Str::uuid()])->save();
+        }
 
         $qr = QrCode::size(300)->generate($user->qr_token);
 
         return response()->json([
             'qr' => $qr,
+            'qr_token' => $user->qr_token,
         ]);
     }
 }
