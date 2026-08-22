@@ -208,8 +208,11 @@ class BookingController extends Controller
             ]);
         }
 
-        $checkpointIds = $trip->checkpoints()
-            ->pluck('checkpoint_id');
+        $routeCheckpoints = $trip->checkpoints()
+            ->with('checkpoint:id,governorate')
+            ->orderBy('id')
+            ->get();
+        $checkpointIds = $routeCheckpoints->pluck('checkpoint_id');
 
         if (
             ! $checkpointIds->contains($data['pickup_checkpoint_id'])
@@ -218,6 +221,33 @@ class BookingController extends Controller
             throw ValidationException::withMessages([
                 'pickup_checkpoint_id' => [
                     'Pickup and dropoff checkpoints must belong to the trip.',
+                ],
+            ]);
+        }
+
+        $pickupCheckpoint = Checkpoint::findOrFail(
+            $data['pickup_checkpoint_id']
+        );
+        $dropoffCheckpoint = Checkpoint::findOrFail(
+            $data['dropoff_checkpoint_id']
+        );
+        $sourceGovernorate = $trip->source_governorate
+            ?? $routeCheckpoints->first()?->checkpoint?->governorate;
+        $destinationGovernorate = $trip->destination_governorate
+            ?? $routeCheckpoints->last()?->checkpoint?->governorate;
+
+        if ($pickupCheckpoint->governorate !== $sourceGovernorate) {
+            throw ValidationException::withMessages([
+                'pickup_checkpoint_id' => [
+                    'نقطة الصعود يجب أن تكون ضمن محافظة انطلاق الرحلة.',
+                ],
+            ]);
+        }
+
+        if ($dropoffCheckpoint->governorate !== $destinationGovernorate) {
+            throw ValidationException::withMessages([
+                'dropoff_checkpoint_id' => [
+                    'نقطة النزول يجب أن تكون ضمن محافظة وصول الرحلة.',
                 ],
             ]);
         }

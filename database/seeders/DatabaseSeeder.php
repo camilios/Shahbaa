@@ -5,9 +5,10 @@ namespace Database\Seeders;
 use App\Models\Booking;
 use App\Models\Checkpoint;
 use App\Models\Complaint;
+use App\Models\DeviceToken;
 use App\Models\DriverCheckpointLog;
 use App\Models\DriverRequest;
-use App\Models\DeviceToken;
+use App\Models\Governorate;
 use App\Models\PointAuditLog;
 use App\Models\PointTransaction;
 use App\Models\PointWallet;
@@ -25,6 +26,7 @@ use App\Notifications\SystemEventNotification;
 use App\Services\PointWalletService;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class DatabaseSeeder extends Seeder
@@ -42,7 +44,7 @@ class DatabaseSeeder extends Seeder
         PointTransaction::truncate();
         PointWallet::truncate();
         DeviceToken::truncate();
-        \Illuminate\Support\Facades\DB::table('notifications')->truncate();
+        DB::table('notifications')->truncate();
         Scouring::truncate();
         DriverCheckpointLog::truncate();
         DriverRequest::truncate();
@@ -56,10 +58,14 @@ class DatabaseSeeder extends Seeder
         TripCheckpoint::truncate();
         Checkpoint::truncate();
         Trip::truncate();
+        Governorate::truncate();
         Role::truncate();
         User::truncate();
 
         Schema::enableForeignKeyConstraints();
+
+        $this->call(GovernorateSeeder::class);
+        $governorates = Governorate::query()->pluck('id', 'name');
 
         $admin = User::create([
             'name' => 'System Admin',
@@ -170,34 +176,42 @@ class DatabaseSeeder extends Seeder
             'name' => 'Aleppo Center',
             'location' => 'Saadallah Al-Jabiri Square',
             'governorate' => 'Aleppo',
+            'governorate_id' => $governorates['Aleppo'],
         ]);
 
         $university = Checkpoint::create([
             'name' => 'University Gate',
             'location' => 'Aleppo University',
             'governorate' => 'Aleppo',
+            'governorate_id' => $governorates['Aleppo'],
         ]);
 
         $newAleppo = Checkpoint::create([
             'name' => 'New Aleppo',
             'location' => 'New Aleppo Main Road',
             'governorate' => 'Aleppo',
+            'governorate_id' => $governorates['Aleppo'],
         ]);
 
         $damascusStation = Checkpoint::create([
             'name' => 'Damascus Station',
             'location' => 'Al-Hijaz Station',
             'governorate' => 'Damascus',
+            'governorate_id' => $governorates['Damascus'],
         ]);
 
-        $homsStation = Checkpoint::create(['name' => 'Homs Station', 'location' => 'Central Bus Station', 'governorate' => 'Homs']);
-        $hamaStation = Checkpoint::create(['name' => 'Hama Station', 'location' => 'Aleppo Road', 'governorate' => 'Hama']);
-        $latakiaStation = Checkpoint::create(['name' => 'Latakia Station', 'location' => 'Sports City', 'governorate' => 'Latakia']);
-        $tartusStation = Checkpoint::create(['name' => 'Tartus Station', 'location' => 'Corniche Road', 'governorate' => 'Tartus']);
+        $homsStation = Checkpoint::create(['name' => 'Homs Station', 'location' => 'Central Bus Station', 'governorate' => 'Homs', 'governorate_id' => $governorates['Homs']]);
+        $hamaStation = Checkpoint::create(['name' => 'Hama Station', 'location' => 'Aleppo Road', 'governorate' => 'Hama', 'governorate_id' => $governorates['Hama']]);
+        $latakiaStation = Checkpoint::create(['name' => 'Latakia Station', 'location' => 'Sports City', 'governorate' => 'Latakia', 'governorate_id' => $governorates['Latakia']]);
+        $tartusStation = Checkpoint::create(['name' => 'Tartus Station', 'location' => 'Corniche Road', 'governorate' => 'Tartus', 'governorate_id' => $governorates['Tartus']]);
 
         $tripOne = Trip::create([
             'driver_id' => $driverOne->id,
             'type' => 'standard',
+            'source_governorate' => 'Aleppo',
+            'destination_governorate' => 'Aleppo',
+            'source_governorate_id' => $governorates['Aleppo'],
+            'destination_governorate_id' => $governorates['Aleppo'],
             'point_price' => 25,
             'money_price' => 15000,
             'status' => 'scheduled',
@@ -211,6 +225,10 @@ class DatabaseSeeder extends Seeder
         $tripTwo = Trip::create([
             'driver_id' => $driverTwo->id,
             'type' => 'private',
+            'source_governorate' => 'Aleppo',
+            'destination_governorate' => 'Damascus',
+            'source_governorate_id' => $governorates['Aleppo'],
+            'destination_governorate_id' => $governorates['Damascus'],
             'point_price' => 40,
             'money_price' => 45000,
             'status' => 'active',
@@ -223,24 +241,32 @@ class DatabaseSeeder extends Seeder
 
         $tripThree = Trip::create([
             'driver_id' => $driverOne->id, 'type' => 'entertainment', 'point_price' => 60,
+            'source_governorate' => 'Aleppo', 'destination_governorate' => 'Tartus',
+            'source_governorate_id' => $governorates['Aleppo'], 'destination_governorate_id' => $governorates['Tartus'],
             'money_price' => 80000, 'status' => 'scheduled',
             'departure_date' => now()->addDays(5)->setTime(7, 0), 'arrival_date' => now()->addDays(5)->setTime(13, 0),
             'total_seats' => 20, 'available_seats' => 15, 'earned_points' => 150,
         ]);
         $tripFour = Trip::create([
             'driver_id' => $driverTwo->id, 'type' => 'standard', 'point_price' => 30,
+            'source_governorate' => 'Damascus', 'destination_governorate' => 'Homs',
+            'source_governorate_id' => $governorates['Damascus'], 'destination_governorate_id' => $governorates['Homs'],
             'money_price' => 25000, 'status' => 'completed',
             'departure_date' => now()->subDays(5)->setTime(9, 0), 'arrival_date' => now()->subDays(5)->setTime(12, 0),
             'total_seats' => 16, 'available_seats' => 10, 'earned_points' => 90,
         ]);
         $tripFive = Trip::create([
             'driver_id' => $driverOne->id, 'type' => 'standard', 'point_price' => 35,
+            'source_governorate' => 'Aleppo', 'destination_governorate' => 'Homs',
+            'source_governorate_id' => $governorates['Aleppo'], 'destination_governorate_id' => $governorates['Homs'],
             'money_price' => 30000, 'status' => 'completed',
             'departure_date' => now()->subDays(20)->setTime(11, 0), 'arrival_date' => now()->subDays(20)->setTime(15, 0),
             'total_seats' => 18, 'available_seats' => 12, 'earned_points' => 100,
         ]);
         $tripSix = Trip::create([
             'driver_id' => $driverTwo->id, 'type' => 'private', 'point_price' => 50,
+            'source_governorate' => 'Homs', 'destination_governorate' => 'Latakia',
+            'source_governorate_id' => $governorates['Homs'], 'destination_governorate_id' => $governorates['Latakia'],
             'money_price' => 60000, 'status' => 'cancelled',
             'departure_date' => now()->subMonths(2), 'arrival_date' => now()->subMonths(2)->addHours(4),
             'total_seats' => 10, 'available_seats' => 10, 'earned_points' => 110,
@@ -250,7 +276,7 @@ class DatabaseSeeder extends Seeder
             for ($seat = 1; $seat <= $trip->total_seats; $seat++) {
                 Seat::create([
                     'trip_id' => $trip->id,
-                    'seat_number' => 'S' . str_pad((string) $seat, 2, '0', STR_PAD_LEFT),
+                    'seat_number' => 'S'.str_pad((string) $seat, 2, '0', STR_PAD_LEFT),
                 ]);
             }
         }

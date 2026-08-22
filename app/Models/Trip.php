@@ -12,6 +12,10 @@ class Trip extends Model
     protected $fillable = [
         'driver_id',
         'type',
+        'source_governorate',
+        'destination_governorate',
+        'source_governorate_id',
+        'destination_governorate_id',
         'point_price',
         'money_price',
         'status',
@@ -33,6 +37,16 @@ class Trip extends Model
     public function driver()
     {
         return $this->belongsTo(User::class, 'driver_id');
+    }
+
+    public function sourceGovernorateRelation()
+    {
+        return $this->belongsTo(Governorate::class, 'source_governorate_id');
+    }
+
+    public function destinationGovernorateRelation()
+    {
+        return $this->belongsTo(Governorate::class, 'destination_governorate_id');
     }
 
     public function bookings()

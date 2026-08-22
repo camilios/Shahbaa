@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\TripRequest;
+use App\Models\Checkpoint;
+use App\Models\Governorate;
 use App\Models\Trip;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +18,8 @@ class TripController extends Controller
             'driver',
             'seats.booking.user',
             'checkpoints.checkpoint',
+            'sourceGovernorateRelation',
+            'destinationGovernorateRelation',
             'ratings.repliedBy',
         ])->paginate(20);
     }
@@ -27,6 +31,8 @@ class TripController extends Controller
             'seats.booking.user',
             'bookedSeats',
             'checkpoints.checkpoint',
+            'sourceGovernorateRelation',
+            'destinationGovernorateRelation',
             'ratings.repliedBy',
             'waitingList',
         ]);
@@ -39,6 +45,8 @@ class TripController extends Controller
             $checkpointIds = Arr::pull($data, 'checkpoint_ids');
             unset($data['available_seats']);
 
+            $this->validateRouteGovernorates($data, $checkpointIds);
+
             $data['available_seats'] = $data['total_seats'];
             $trip = Trip::create($data);
 
@@ -49,6 +57,8 @@ class TripController extends Controller
                 'driver',
                 'seats.booking.user',
                 'checkpoints.checkpoint',
+                'sourceGovernorateRelation',
+                'destinationGovernorateRelation',
             ]);
         });
     }
@@ -59,6 +69,12 @@ class TripController extends Controller
             $data = $request->validated();
             $checkpointIds = Arr::pull($data, 'checkpoint_ids');
             unset($data['available_seats']);
+
+            $routeCheckpointIds = $checkpointIds ?? $trip->checkpoints()
+                ->orderBy('id')
+                ->pluck('checkpoint_id')
+                ->all();
+            $this->validateRouteGovernorates($data, $routeCheckpointIds, $trip);
 
             if (isset($data['total_seats'])) {
                 $booked = $trip->seats()
@@ -94,6 +110,8 @@ class TripController extends Controller
                 'driver',
                 'seats.booking.user',
                 'checkpoints.checkpoint',
+                'sourceGovernorateRelation',
+                'destinationGovernorateRelation',
             ]);
         });
     }
@@ -115,6 +133,39 @@ class TripController extends Controller
                 'description' => 'Stop '.($index + 1),
             ]);
         }
+    }
+
+    private function validateRouteGovernorates(array &$data, array $checkpointIds, ?Trip $trip = null): void
+    {
+        $sourceId = $data['source_governorate_id'] ?? $trip?->source_governorate_id;
+        $destinationId = $data['destination_governorate_id'] ?? $trip?->destination_governorate_id;
+        $route = Checkpoint::query()
+            ->whereIn('id', $checkpointIds)
+            ->get(['id', 'governorate_id'])
+            ->keyBy('id');
+        $firstGovernorateId = $route->get($checkpointIds[0] ?? null)?->governorate_id;
+        $lastGovernorateId = $route->get($checkpointIds[count($checkpointIds) - 1] ?? null)?->governorate_id;
+
+        if ((int) $sourceId === (int) $destinationId) {
+            throw ValidationException::withMessages([
+                'destination_governorate_id' => ['محافظة الوصول يجب أن تختلف عن محافظة الانطلاق.'],
+            ]);
+        }
+
+        if ((int) $sourceId !== (int) $firstGovernorateId) {
+            throw ValidationException::withMessages([
+                'source_governorate_id' => ['محافظة الانطلاق يجب أن تطابق محافظة أول نقطة في مسار الرحلة.'],
+            ]);
+        }
+
+        if ((int) $destinationId !== (int) $lastGovernorateId) {
+            throw ValidationException::withMessages([
+                'destination_governorate_id' => ['محافظة الوصول يجب أن تطابق محافظة آخر نقطة في مسار الرحلة.'],
+            ]);
+        }
+
+        $data['source_governorate'] = Governorate::findOrFail($sourceId)->name;
+        $data['destination_governorate'] = Governorate::findOrFail($destinationId)->name;
     }
 
     private function synchronizeSeats(Trip $trip, int $total): void

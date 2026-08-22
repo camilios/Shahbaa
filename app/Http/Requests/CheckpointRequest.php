@@ -10,14 +10,14 @@ class CheckpointRequest extends ApiRequest
             return [
                 'name' => 'required|string|max:255',
                 'location' => 'nullable|string|max:255',
-                'governorate' => 'nullable|string|max:255',
+                'governorate_id' => 'required|integer|exists:governorates,id',
             ];
         }
 
         return [
             'name' => 'sometimes|required|string|max:255',
             'location' => 'nullable|string|max:255',
-            'governorate' => 'nullable|string|max:255',
+            'governorate_id' => 'sometimes|required|integer|exists:governorates,id',
         ];
     }
 }

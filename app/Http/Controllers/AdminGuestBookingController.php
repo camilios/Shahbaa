@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\GuestBookingRequest;
 use App\Models\Booking;
+use App\Models\Checkpoint;
 use App\Models\Trip;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,24 @@ class AdminGuestBookingController extends Controller
             ) {
                 throw ValidationException::withMessages([
                     'pickup_checkpoint_id' => ['Pickup and dropoff checkpoints must belong to the trip.'],
+                ]);
+            }
+
+            $pickupCheckpoint = Checkpoint::findOrFail($data['pickup_checkpoint_id']);
+            $dropoffCheckpoint = Checkpoint::findOrFail($data['dropoff_checkpoint_id']);
+            $orderedCheckpointIds = $trip->checkpoints()->orderBy('id')->pluck('checkpoint_id');
+            $sourceGovernorate = $trip->source_governorate
+                ?? Checkpoint::find($orderedCheckpointIds->first())?->governorate;
+            $destinationGovernorate = $trip->destination_governorate
+                ?? Checkpoint::find($orderedCheckpointIds->last())?->governorate;
+            if ($pickupCheckpoint->governorate !== $sourceGovernorate) {
+                throw ValidationException::withMessages([
+                    'pickup_checkpoint_id' => ['نقطة الصعود يجب أن تكون ضمن محافظة انطلاق الرحلة.'],
+                ]);
+            }
+            if ($dropoffCheckpoint->governorate !== $destinationGovernorate) {
+                throw ValidationException::withMessages([
+                    'dropoff_checkpoint_id' => ['نقطة النزول يجب أن تكون ضمن محافظة وصول الرحلة.'],
                 ]);
             }
 

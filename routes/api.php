@@ -6,13 +6,13 @@ use App\Http\Controllers\AdminGuestBookingController;
 use App\Http\Controllers\AdminPointAuditLogController;
 use App\Http\Controllers\AdminReportsController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CheckpointController;
 use App\Http\Controllers\ComplaintController;
-use App\Http\Controllers\CustomerTripController;
-use App\Http\Controllers\CustomerPointWalletController;
 use App\Http\Controllers\CustomerPointsPaymentController;
+use App\Http\Controllers\CustomerPointWalletController;
+use App\Http\Controllers\CustomerStripeCheckoutController;
+use App\Http\Controllers\CustomerTripController;
 use App\Http\Controllers\DeviceTokenController;
 use App\Http\Controllers\DriverAuthController;
 use App\Http\Controllers\DriverCheckpointLogController;
@@ -22,16 +22,17 @@ use App\Http\Controllers\DriverTripController;
 use App\Http\Controllers\DriverTripObjectionController;
 use App\Http\Controllers\DriverTripPassengerController;
 use App\Http\Controllers\DriverTripScanController;
-use App\Http\Controllers\PrivateTripRequestController;
+use App\Http\Controllers\GovernorateController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PrivateTripRequestController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\RealtimeTrackingAuthorizationController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ScouringController;
+use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\TripController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WaitingListController;
-use App\Http\Controllers\CustomerStripeCheckoutController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('api')->group(function () {
@@ -348,6 +349,12 @@ Route::middleware('api')->group(function () {
             CheckpointController::class,
             'destroy',
         ])->middleware('admin');
+
+        Route::get('governorates', [GovernorateController::class, 'index']);
+        Route::post('governorates', [GovernorateController::class, 'store'])->middleware('admin');
+        Route::put('governorates/{governorate}', [GovernorateController::class, 'update'])->middleware('admin');
+        Route::patch('governorates/{governorate}', [GovernorateController::class, 'update'])->middleware('admin');
+        Route::delete('governorates/{governorate}', [GovernorateController::class, 'destroy'])->middleware('admin');
 
         Route::get('bookings', [
             BookingController::class,

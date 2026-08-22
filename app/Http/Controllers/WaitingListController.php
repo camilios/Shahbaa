@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\WaitingListRequest;
-use App\Models\WaitingList;
+use App\Models\Checkpoint;
 use App\Models\Trip;
+use App\Models\WaitingList;
 use App\Services\WaitingListPromotionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,12 @@ class WaitingListController extends Controller
                     'pickup_checkpoint_id' => ['Pickup and dropoff checkpoints must belong to the trip.'],
                 ]);
             }
+
+            $this->validateRouteGovernorates(
+                $trip,
+                $data['pickup_checkpoint_id'],
+                $data['dropoff_checkpoint_id']
+            );
 
             $waitingList = WaitingList::firstOrCreate(
                 [
@@ -118,6 +125,8 @@ class WaitingListController extends Controller
                 ]);
             }
 
+            $this->validateRouteGovernorates($trip, $pickupCheckpointId, $dropoffCheckpointId);
+
             $waitingList = WaitingList::firstOrCreate(
                 ['user_id' => $data['user_id'], 'trip_id' => $trip->id],
                 [
@@ -152,5 +161,26 @@ class WaitingListController extends Controller
         $waitingList->delete();
 
         return response()->noContent();
+    }
+
+    private function validateRouteGovernorates(Trip $trip, int $pickupId, int $dropoffId): void
+    {
+        $orderedIds = $trip->checkpoints()->orderBy('id')->pluck('checkpoint_id');
+        $source = $trip->source_governorate
+            ?? Checkpoint::find($orderedIds->first())?->governorate;
+        $destination = $trip->destination_governorate
+            ?? Checkpoint::find($orderedIds->last())?->governorate;
+
+        if (Checkpoint::findOrFail($pickupId)->governorate !== $source) {
+            throw ValidationException::withMessages([
+                'pickup_checkpoint_id' => ['نقطة الصعود يجب أن تكون ضمن محافظة انطلاق الرحلة.'],
+            ]);
+        }
+
+        if (Checkpoint::findOrFail($dropoffId)->governorate !== $destination) {
+            throw ValidationException::withMessages([
+                'dropoff_checkpoint_id' => ['نقطة النزول يجب أن تكون ضمن محافظة وصول الرحلة.'],
+            ]);
+        }
     }
 }

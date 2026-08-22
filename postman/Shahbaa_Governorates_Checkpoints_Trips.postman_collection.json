@@ -1,0 +1,148 @@
+{
+  "info": {
+    "_postman_id": "ae43ab92-662f-4ed4-9e17-15aed7da3997",
+    "name": "Shahbaa - Governorates, Checkpoints & Trips",
+    "description": "End-to-end tests for the normalized governorate flow. Run requests in order. Set baseUrl, adminEmail, adminPassword and driverId first.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+  "event": [{
+    "listen": "prerequest",
+    "script": { "type": "text/javascript", "exec": [
+      "pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });",
+      "if (['POST','PUT','PATCH'].includes(pm.request.method)) pm.request.headers.upsert({ key: 'Content-Type', value: 'application/json' });"
+    ] }
+  }],
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:8000/api" },
+    { "key": "adminEmail", "value": "admin@example.com" },
+    { "key": "adminPassword", "value": "password" },
+    { "key": "adminToken", "value": "" },
+    { "key": "driverId", "value": "2" },
+    { "key": "sourceGovernorateId", "value": "" },
+    { "key": "destinationGovernorateId", "value": "" },
+    { "key": "sourceCheckpointId", "value": "" },
+    { "key": "destinationCheckpointId", "value": "" },
+    { "key": "tripId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 - Authentication",
+      "item": [{
+        "name": "Admin Login",
+        "auth": { "type": "noauth" },
+        "request": {
+          "method": "POST",
+          "url": "{{baseUrl}}/admin/login",
+          "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}", "options": { "raw": { "language": "json" } } },
+          "description": "Authenticates an active administrator and saves the Sanctum token automatically."
+        },
+        "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('Login succeeded', () => pm.response.to.have.status(200));",
+          "const json = pm.response.json();",
+          "pm.expect(json.token).to.be.a('string').and.not.empty;",
+          "pm.collectionVariables.set('adminToken', json.token);"
+        ] } }]
+      }]
+    },
+    {
+      "name": "02 - Governorates CRUD",
+      "item": [
+        {
+          "name": "Create Source Governorate",
+          "request": { "method": "POST", "url": "{{baseUrl}}/governorates", "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman Source {{$timestamp}}\"\n}", "options": { "raw": { "language": "json" } } } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Created', () => pm.response.to.have.status(201));", "const json=pm.response.json(); pm.collectionVariables.set('sourceGovernorateId', json.id);"] } }]
+        },
+        {
+          "name": "Create Destination Governorate",
+          "request": { "method": "POST", "url": "{{baseUrl}}/governorates", "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman Destination {{$timestamp}}\"\n}", "options": { "raw": { "language": "json" } } } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Created', () => pm.response.to.have.status(201));", "const json=pm.response.json(); pm.collectionVariables.set('destinationGovernorateId', json.id);"] } }]
+        },
+        {
+          "name": "List Governorates",
+          "request": { "method": "GET", "url": "{{baseUrl}}/governorates" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Returns array', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });"] } }]
+        },
+        {
+          "name": "Update Source Governorate",
+          "request": { "method": "PATCH", "url": "{{baseUrl}}/governorates/{{sourceGovernorateId}}", "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman Source Updated {{$timestamp}}\"\n}", "options": { "raw": { "language": "json" } } } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Updated', () => pm.response.to.have.status(200));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "03 - Checkpoints linked to Governorates",
+      "item": [
+        {
+          "name": "Create Source Checkpoint",
+          "request": { "method": "POST", "url": "{{baseUrl}}/checkpoints", "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman Source Station\",\n  \"location\": \"Source main road\",\n  \"governorate_id\": {{sourceGovernorateId}}\n}", "options": { "raw": { "language": "json" } } } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Checkpoint created and linked', () => { pm.response.to.have.status(201); const j=pm.response.json(); pm.expect(j.governorate_id).to.eql(Number(pm.collectionVariables.get('sourceGovernorateId'))); });", "pm.collectionVariables.set('sourceCheckpointId', pm.response.json().id);"] } }]
+        },
+        {
+          "name": "Create Destination Checkpoint",
+          "request": { "method": "POST", "url": "{{baseUrl}}/checkpoints", "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman Destination Station\",\n  \"location\": \"Destination main road\",\n  \"governorate_id\": {{destinationGovernorateId}}\n}", "options": { "raw": { "language": "json" } } } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Checkpoint created and linked', () => pm.response.to.have.status(201));", "pm.collectionVariables.set('destinationCheckpointId', pm.response.json().id);"] } }]
+        },
+        {
+          "name": "List Checkpoints",
+          "request": { "method": "GET", "url": "{{baseUrl}}/checkpoints" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('List loaded', () => pm.response.to.have.status(200));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "04 - Trip with Source and Destination Governorates",
+      "item": [
+        {
+          "name": "Create Trip",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/trips",
+            "description": "driverId must reference an active driver. The first checkpoint belongs to source and last checkpoint belongs to destination.",
+            "body": { "mode": "raw", "raw": "{\n  \"driver_id\": {{driverId}},\n  \"type\": \"standard\",\n  \"source_governorate_id\": {{sourceGovernorateId}},\n  \"destination_governorate_id\": {{destinationGovernorateId}},\n  \"checkpoint_ids\": [{{sourceCheckpointId}}, {{destinationCheckpointId}}],\n  \"status\": \"scheduled\",\n  \"departure_date\": \"2030-01-20 08:00:00\",\n  \"arrival_date\": \"2030-01-20 12:00:00\",\n  \"total_seats\": 20,\n  \"money_price\": 10000,\n  \"point_price\": 100\n}", "options": { "raw": { "language": "json" } } }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Trip created', () => pm.response.to.have.status(201));",
+            "const j=pm.response.json(); pm.collectionVariables.set('tripId', j.id);",
+            "pm.test('Governorate IDs saved', () => { pm.expect(j.source_governorate_id).to.eql(Number(pm.collectionVariables.get('sourceGovernorateId'))); pm.expect(j.destination_governorate_id).to.eql(Number(pm.collectionVariables.get('destinationGovernorateId'))); });"
+          ] } }]
+        },
+        {
+          "name": "Get Created Trip",
+          "request": { "method": "GET", "url": "{{baseUrl}}/trips/{{tripId}}" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Trip route returned', () => { pm.response.to.have.status(200); const j=pm.response.json(); pm.expect(j.checkpoints).to.have.lengthOf(2); });"] } }]
+        },
+        {
+          "name": "Reject Reversed Governorates",
+          "request": { "method": "POST", "url": "{{baseUrl}}/trips", "body": { "mode": "raw", "raw": "{\n  \"driver_id\": {{driverId}},\n  \"type\": \"standard\",\n  \"source_governorate_id\": {{destinationGovernorateId}},\n  \"destination_governorate_id\": {{sourceGovernorateId}},\n  \"checkpoint_ids\": [{{sourceCheckpointId}}, {{destinationCheckpointId}}],\n  \"total_seats\": 10\n}", "options": { "raw": { "language": "json" } } } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Mismatched route rejected', () => pm.response.to.have.status(422));", "pm.test('Source error exists', () => pm.expect(pm.response.json().errors.source_governorate_id).to.be.an('array'));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "05 - Mobile Pickup and Drop-off Filtering",
+      "item": [
+        {
+          "name": "List Customer Governorates",
+          "request": { "method": "GET", "url": "{{baseUrl}}/customer/governorates" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Governorates returned', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().data).to.be.an('array'); });"] } }]
+        },
+        {
+          "name": "Pickup - Checkpoints by Source Governorate ID",
+          "request": { "method": "POST", "url": "{{baseUrl}}/customer/checkpoints/by-governorate", "body": { "mode": "raw", "raw": "{\n  \"governorate_id\": {{sourceGovernorateId}}\n}", "options": { "raw": { "language": "json" } } } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Only source checkpoints returned', () => { pm.response.to.have.status(200); pm.response.json().forEach(c => pm.expect(c.governorate_id).to.eql(Number(pm.collectionVariables.get('sourceGovernorateId')))); });"] } }]
+        },
+        {
+          "name": "Drop-off - Checkpoints by Destination Governorate ID",
+          "request": { "method": "POST", "url": "{{baseUrl}}/customer/checkpoints/by-governorate", "body": { "mode": "raw", "raw": "{\n  \"governorate_id\": {{destinationGovernorateId}}\n}", "options": { "raw": { "language": "json" } } } },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Only destination checkpoints returned', () => { pm.response.to.have.status(200); pm.response.json().forEach(c => pm.expect(c.governorate_id).to.eql(Number(pm.collectionVariables.get('destinationGovernorateId')))); });"] } }]
+        },
+        {
+          "name": "Cannot Delete Linked Governorate",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/governorates/{{sourceGovernorateId}}" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Linked governorate protected', () => pm.response.to.have.status(422));"] } }]
+        }
+      ]
+    }
+  ]
+}

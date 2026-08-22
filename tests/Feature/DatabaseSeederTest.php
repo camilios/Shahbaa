@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Booking;
 use App\Models\Checkpoint;
 use App\Models\DeviceToken;
+use App\Models\Governorate;
 use App\Models\PointAuditLog;
 use App\Models\PrivateTripRequest;
 use App\Models\Rating;
@@ -27,7 +28,10 @@ class DatabaseSeederTest extends TestCase
 
         $this->assertGreaterThanOrEqual(12, User::count());
         $this->assertGreaterThanOrEqual(8, Checkpoint::count());
+        $this->assertSame(14, Governorate::count());
+        $this->assertSame(0, Checkpoint::whereNull('governorate_id')->count());
         $this->assertGreaterThanOrEqual(6, Trip::count());
+        $this->assertSame(0, Trip::whereNull('source_governorate_id')->orWhereNull('destination_governorate_id')->count());
         $this->assertGreaterThanOrEqual(10, Booking::count());
         $this->assertGreaterThanOrEqual(4, Rating::count());
         $this->assertGreaterThanOrEqual(3, PrivateTripRequest::count());

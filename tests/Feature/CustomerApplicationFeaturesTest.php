@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Booking;
 use App\Models\Checkpoint;
 use App\Models\Complaint;
+use App\Models\Governorate;
 use App\Models\Rating;
 use App\Models\Trip;
 use App\Models\User;
@@ -42,9 +43,11 @@ class CustomerApplicationFeaturesTest extends TestCase
     public function test_governorates_are_unique_and_checkpoints_are_filtered(): void
     {
         Sanctum::actingAs($this->user());
-        Checkpoint::create(['name' => 'A', 'governorate' => 'Damascus']);
-        Checkpoint::create(['name' => 'B', 'governorate' => 'Damascus']);
-        Checkpoint::create(['name' => 'C', 'governorate' => 'Aleppo']);
+        $damascus = Governorate::create(['name' => 'Damascus']);
+        $aleppo = Governorate::create(['name' => 'Aleppo']);
+        Checkpoint::create(['name' => 'A', 'governorate' => 'Damascus', 'governorate_id' => $damascus->id]);
+        Checkpoint::create(['name' => 'B', 'governorate' => 'Damascus', 'governorate_id' => $damascus->id]);
+        Checkpoint::create(['name' => 'C', 'governorate' => 'Aleppo', 'governorate_id' => $aleppo->id]);
 
         $this->getJson('/api/customer/governorates')
             ->assertOk()

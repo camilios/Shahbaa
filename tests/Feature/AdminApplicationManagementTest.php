@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Booking;
 use App\Models\Checkpoint;
 use App\Models\Complaint;
+use App\Models\Governorate;
 use App\Models\PrivateTripRequest;
 use App\Models\Rating;
 use App\Models\Trip;
@@ -49,6 +50,8 @@ class AdminApplicationManagementTest extends TestCase
         $response = $this->postJson('/api/trips', [
             'driver_id' => $driver->id,
             'type' => 'standard',
+            'source_governorate_id' => $from->governorate_id,
+            'destination_governorate_id' => $to->governorate_id,
             'status' => 'scheduled',
             'departure_date' => now()->addDay(),
             'arrival_date' => now()->addDay()->addHour(),
@@ -58,6 +61,8 @@ class AdminApplicationManagementTest extends TestCase
 
         $trip = Trip::findOrFail($response->json('id'));
         $this->assertSame($driver->id, $trip->driver_id);
+        $this->assertSame('Aleppo', $trip->source_governorate);
+        $this->assertSame('Damascus', $trip->destination_governorate);
         $this->assertSame(50, $trip->seats()->count());
         $this->assertSame(50, $trip->available_seats);
         $this->assertEquals([$from->id, $to->id], $trip->checkpoints()->pluck('checkpoint_id')->all());
@@ -65,6 +70,8 @@ class AdminApplicationManagementTest extends TestCase
         $this->postJson('/api/trips', [
             'driver_id' => $driver->id,
             'type' => 'standard',
+            'source_governorate_id' => $from->governorate_id,
+            'destination_governorate_id' => $to->governorate_id,
             'total_seats' => 51,
             'checkpoint_ids' => [$from->id, $to->id],
         ])->assertUnprocessable()->assertJsonValidationErrors('total_seats');
@@ -73,11 +80,12 @@ class AdminApplicationManagementTest extends TestCase
     public function test_checkpoint_can_be_created(): void
     {
         Sanctum::actingAs($this->user('admin'));
+        $governorate = Governorate::create(['name' => 'Aleppo']);
 
         $this->postJson('/api/checkpoints', [
             'name' => 'New Station',
             'location' => 'Main road',
-            'governorate' => 'Aleppo',
+            'governorate_id' => $governorate->id,
         ])->assertCreated()->assertJsonPath('name', 'New Station');
     }
 
@@ -573,9 +581,12 @@ class AdminApplicationManagementTest extends TestCase
 
     private function checkpoints(): array
     {
+        $aleppo = Governorate::firstOrCreate(['name' => 'Aleppo']);
+        $damascus = Governorate::firstOrCreate(['name' => 'Damascus']);
+
         return [
-            Checkpoint::create(['name' => 'From']),
-            Checkpoint::create(['name' => 'To']),
+            Checkpoint::create(['name' => 'From', 'governorate' => 'Aleppo', 'governorate_id' => $aleppo->id]),
+            Checkpoint::create(['name' => 'To', 'governorate' => 'Damascus', 'governorate_id' => $damascus->id]),
         ];
     }
 

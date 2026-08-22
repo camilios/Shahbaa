@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class UserController extends Controller
@@ -98,7 +99,7 @@ class UserController extends Controller
 
     public function update_profile(Request $request)
     {
-        /** @var \App\Models\User|null $users */
+        /** @var User|null $users */
         $users = auth('sanctum')->user();
 
         if (! $users) {
@@ -122,7 +123,7 @@ class UserController extends Controller
                 'password' => [
                     'nullable',
                     'string',
-                    \Illuminate\Validation\Rules\Password::min(10)
+                    Password::min(10)
                         ->letters()
                         ->numbers()
                         ->symbols(),
@@ -190,7 +191,7 @@ class UserController extends Controller
             $user->forceFill(['qr_token' => (string) Str::uuid()])->save();
         }
 
-        $qr = QrCode::size(300)->generate($user->qr_token);
+        $qr = (string) QrCode::size(300)->generate($user->qr_token);
 
         return response()->json([
             'qr' => $qr,

@@ -2,9 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Booking;
-use App\Models\DriverCheckpointLog;
-use App\Models\TripCheckpoint;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -16,11 +13,17 @@ class Checkpoint extends Model
         'name',
         'location',
         'governorate',
+        'governorate_id',
     ];
 
     public function tripCheckpoints()
     {
         return $this->hasMany(TripCheckpoint::class);
+    }
+
+    public function governorateRelation()
+    {
+        return $this->belongsTo(Governorate::class, 'governorate_id');
     }
 
     public function pickupBookings()

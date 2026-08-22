@@ -12,6 +12,8 @@ class TripRequest extends ApiRequest
             return [
                 'driver_id' => ['required', Rule::exists('users', 'id')->where('role', 'driver')->where('status', 'active')],
                 'type' => 'required|string|max:255',
+                'source_governorate_id' => ['required', 'integer', 'exists:governorates,id', 'different:destination_governorate_id'],
+                'destination_governorate_id' => ['required', 'integer', 'exists:governorates,id', 'different:source_governorate_id'],
                 'point_price' => 'nullable|numeric|min:0',
                 'money_price' => 'nullable|numeric|min:0',
                 'status' => 'nullable|string|max:100',
@@ -27,6 +29,8 @@ class TripRequest extends ApiRequest
         return [
             'driver_id' => ['sometimes', 'required', Rule::exists('users', 'id')->where('role', 'driver')->where('status', 'active')],
             'type' => 'sometimes|required|string|max:255',
+            'source_governorate_id' => ['sometimes', 'required', 'integer', 'exists:governorates,id', 'different:destination_governorate_id'],
+            'destination_governorate_id' => ['sometimes', 'required', 'integer', 'exists:governorates,id', 'different:source_governorate_id'],
             'point_price' => 'nullable|numeric|min:0',
             'money_price' => 'nullable|numeric|min:0',
             'status' => 'nullable|string|max:100',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Checkpoint;
+use App\Models\Governorate;
 use App\Models\Trip;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -14,26 +15,26 @@ class CustomerTripController extends Controller
     public function governorates()
     {
         return response()->json([
-            'governorates' => Checkpoint::query()
-                ->whereNotNull('governorate')
-                ->where('governorate', '!=', '')
-                ->distinct()
-                ->orderBy('governorate')
-                ->pluck('governorate')
-                ->values(),
+            'governorates' => Governorate::query()->orderBy('name')->pluck('name'),
+            'data' => Governorate::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
     public function checkpointsByGovernorate(Request $request)
     {
         $data = $request->validate([
-            'governorate' => ['required', 'string', 'max:255'],
+            'governorate_id' => ['nullable', 'integer', 'exists:governorates,id', 'required_without:governorate'],
+            'governorate' => ['nullable', 'string', 'max:255', 'required_without:governorate_id'],
         ]);
 
         return Checkpoint::query()
-            ->where('governorate', $data['governorate'])
+            ->when(
+                isset($data['governorate_id']),
+                fn ($query) => $query->where('governorate_id', $data['governorate_id']),
+                fn ($query) => $query->where('governorate', $data['governorate'])
+            )
             ->orderBy('name')
-            ->get(['id', 'name', 'location', 'governorate']);
+            ->get(['id', 'name', 'location', 'governorate', 'governorate_id']);
     }
 
     public function myTrips(Request $request)
