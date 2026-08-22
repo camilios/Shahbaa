@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\AuthorizesTripAccess;
+use App\Models\Checkpoint;
 use App\Models\Trip;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class DriverTripController extends Controller
 {
@@ -23,6 +25,10 @@ class DriverTripController extends Controller
         ]);
 
         $query = Trip::where('driver_id', $request->user()->id)
+            ->with([
+                'checkpoints' => fn ($query) => $query->orderBy('id'),
+                'checkpoints.checkpoint:id,name,location,governorate',
+            ])
             ->withCount('bookings');
 
         if ($period = $validated['period'] ?? null) {
@@ -31,13 +37,38 @@ class DriverTripController extends Controller
 
         $trips = $query->orderBy('departure_date')->paginate(20);
 
+        $trips->getCollection()->each(function (Trip $trip): void {
+            $source = $trip->checkpoints->first()?->checkpoint;
+            $destination = $trip->checkpoints->last()?->checkpoint;
+
+            $trip->setAttribute('from', $source?->name);
+            $trip->setAttribute('to', $destination?->name);
+            $trip->setAttribute('source', $this->checkpointSummary($source));
+            $trip->setAttribute('destination', $this->checkpointSummary($destination));
+            $trip->unsetRelation('checkpoints');
+        });
+
         return response()->json($trips);
+    }
+
+    private function checkpointSummary(?Checkpoint $checkpoint): ?array
+    {
+        if (! $checkpoint) {
+            return null;
+        }
+
+        return [
+            'id' => $checkpoint->id,
+            'name' => $checkpoint->name,
+            'location' => $checkpoint->location,
+            'governorate' => $checkpoint->governorate,
+        ];
     }
 
     /**
      * Resolve a period keyword to a [start, end] datetime range around now.
      *
-     * @return array{0: \Illuminate\Support\Carbon, 1: \Illuminate\Support\Carbon}
+     * @return array{0: Carbon, 1: Carbon}
      */
     private function periodRange(string $period): array
     {

@@ -168,7 +168,7 @@ class UserController extends Controller
         }
 
         return response()->json([
-            'full_name' => $user->full_name,
+            'full_name' => $user->name,
             'mother_name' => $user->mother_name,
             'email' => $user->email,
             'national_number' => $user->national_number,

@@ -1,0 +1,320 @@
+{
+  "info": {
+    "_postman_id": "5d9784a9-e73b-4d13-b530-c008834f3ed8",
+    "name": "Shahbaa — Stripe Checkout & Webhook (Test Mode)",
+    "description": "اختبار متكامل وآمن لتدفق Stripe في Shahbaa. لا يحتوي على مفاتيح Stripe، ولا ينفذ Live Mode. شغّل المجلدات بالترتيب، واقرأ وصف كل طلب قبل الإرسال.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{customer_token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "registration_suffix", "value": "" },
+    { "key": "paid_at_first", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "00 — Preflight",
+      "description": "تحقق من النشر والمسارات قبل إنشاء أي بيانات.",
+      "item": [
+        {
+          "name": "00.1 Health check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/up",
+            "description": "يجب أن يثبت أن تطبيق Railway يعمل. هذا المسار قد يعيد HTML بسيطًا حسب Laravel، لذلك لا يعتمد على اختبار JSON العام."
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Application is healthy', () => pm.response.to.have.status(200));"
+            ], "type": "text/javascript" }
+          }]
+        },
+        {
+          "name": "00.2 Webhook GET must be 405",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/stripe/webhook",
+            "description": "اختبار أن Webhook لا يقبل GET. لا يرسل توقيعًا أو سرًا."
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('GET is rejected with 405', () => pm.response.to.have.status(405));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "00.3 Checkout without token must be 401",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/api/customer/bookings/999999/stripe-checkout",
+            "description": "يجب أن يعيد 401 قبل فحص Booking ID."
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Unauthenticated checkout is 401', () => pm.response.to.have.status(401));",
+            "pm.test('Error message exists', () => pm.expect(pm.response.json().message).to.be.a('string').and.not.empty);"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "01 — Customer authentication",
+      "description": "ينشئ Customer تجريبيًا فريدًا ويحفظ Sanctum token تلقائيًا.",
+      "item": [
+        {
+          "name": "01.1 Register unique test customer",
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+              "const suffix = Date.now().toString();",
+              "pm.collectionVariables.set('registration_suffix', suffix);",
+              "pm.environment.set('customer_email', `stripe.postman.${suffix}@example.test`);"
+            ] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('Customer registered', () => pm.response.to.have.status(201));",
+              "const json = pm.response.json();",
+              "pm.test('Token and customer role returned', function () {",
+              "  pm.expect(json.token).to.be.a('string').and.not.empty;",
+              "  pm.expect((json.user.role || '').toLowerCase()).to.eql('customer');",
+              "});",
+              "pm.environment.set('customer_token', json.token);",
+              "pm.environment.set('customer_id', String(json.user.id));"
+            ] } }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"full_name\": \"Stripe Postman Customer\",\n  \"father_name\": \"Test Father\",\n  \"mother_name\": \"Test Mother\",\n  \"email\": \"{{customer_email}}\",\n  \"phone\": \"09{{$timestamp}}\",\n  \"gender\": \"male\",\n  \"national_number\": \"PM-{{$timestamp}}-{{registration_suffix}}\",\n  \"password\": \"{{customer_password}}\",\n  \"password_confirmation\": \"{{customer_password}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base_url}}/api/register",
+            "description": "ينشئ بيانات اختبار فقط. إن كنت لا تريد إنشاء مستخدم جديد، تخطَّ هذا الطلب واستخدم Login بعد تعبئة email/password."
+          }
+        },
+        {
+          "name": "01.2 Login existing customer (optional)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{customer_email}}\",\n  \"password\": \"{{customer_password}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base_url}}/api/login",
+            "description": "بديل للتسجيل. يحفظ token الجديد تلقائيًا."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Login succeeded', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.environment.set('customer_token', json.token);",
+            "pm.environment.set('customer_id', String(json.user.id));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "02 — Select trip and create booking",
+      "description": "اعثر على رحلة scheduled مستقبلية بسعر نقدي موجب ومقاعد متاحة. ضع trip_id ومحطتي الرحلة في Environment.",
+      "item": [
+        {
+          "name": "02.1 List trips",
+          "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/trips", "description": "اختر رحلة departure_date بعد أكثر من ساعة، status ليست cancelled/completed، money_price >= 0.50 USD، ولديها مقاعد متاحة." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Trips returned', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "02.2 Get selected trip",
+          "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/trips/{{trip_id}}", "description": "افحص checkpoints والمقاعد والسعر والموعد. انسخ معرفي محطتين تابعتين للرحلة إلى pickup_checkpoint_id وdropoff_checkpoint_id." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Selected trip exists', () => pm.response.to.have.status(200));",
+            "pm.test('Trip has positive database price', () => pm.expect(Number(pm.response.json().money_price)).to.be.above(0));"
+          ] } }]
+        },
+        {
+          "name": "02.3 Create pending booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"trip_id\": {{trip_id}},\n  \"pickup_checkpoint_id\": {{pickup_checkpoint_id}},\n  \"dropoff_checkpoint_id\": {{dropoff_checkpoint_id}},\n  \"seats_count\": {{seats_count}}\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base_url}}/api/bookings",
+            "description": "لا ترسل user_id كـCustomer؛ الخادم يأخذ المستخدم من Token. يجب ألا تكون الرحلة ممتلئة وإلا ستعود waiting_list بدل Booking."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Booking created', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Booking is pending/unpaid', function () {",
+            "  pm.expect(json.status).to.eql('pending');",
+            "  pm.expect(json.payment_status).to.eql('unpaid');",
+            "  pm.expect(String(json.user_id)).to.eql(pm.environment.get('customer_id'));",
+            "});",
+            "pm.environment.set('booking_id', String(json.id));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "03 — Checkout and payment verification",
+      "description": "ينشئ Checkout Session في Test Mode ثم يتحقق من تحديث الحجز بعد الدفع التجريبي.",
+      "item": [
+        {
+          "name": "03.1 Create Stripe Checkout Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 1,\n  \"currency\": \"eur\",\n  \"note\": \"These client values must be ignored; server uses the trip price and configured currency.\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base_url}}/api/customer/bookings/{{booking_id}}/stripe-checkout",
+            "description": "القيم في body متعمدة لاختبار عدم الثقة بالعميل. المتوقع 201 وcheckout_url. لا يجب أن تعيد الاستجابة أي secret أو stripe_error."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Checkout Session created', () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.test('Safe complete response', function () {",
+            "  pm.expect(json.checkout_url).to.match(/^https:\/\//);",
+            "  pm.expect(json.session_id).to.match(/^cs_test_/);",
+            "  pm.expect(json.currency).to.eql(pm.environment.get('stripe_currency'));",
+            "  pm.expect(json).not.to.have.property('stripe_error');",
+            "  pm.expect(json).not.to.have.property('booking');",
+            "});",
+            "pm.environment.set('checkout_url', json.checkout_url);",
+            "pm.environment.set('stripe_session_id', json.session_id);",
+            "pm.environment.set('expected_amount_minor', String(Math.round(Number(json.amount) * 100)));"
+          ] } }]
+        },
+        {
+          "name": "03.2 Open checkout_url in browser — manual",
+          "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{checkout_url}}", "description": "لا تُكمل الدفع داخل Postman. افتح checkout_url في المتصفح. اختبر أولًا البطاقة المرفوضة 4000 0000 0000 0002 وتأكد أن Stripe يعرض الرفض وأن الحجز لم يصبح paid. بعدها أعد المحاولة في الجلسة نفسها ببطاقة النجاح 4242 4242 4242 4242، تاريخ مستقبلي وأي CVC. هذا Test Mode فقط." }
+        },
+        {
+          "name": "03.3 Get booking after webhook",
+          "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/bookings/{{booking_id}}", "description": "شغّله بعد الدفع ووصول Webhook. يحفظ paid_at للمقارنة عند إعادة الحدث." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Booking fetch succeeded', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Webhook confirmed payment', function () {",
+            "  pm.expect(json.status).to.eql('confirmed');",
+            "  pm.expect(json.payment_method).to.eql('stripe');",
+            "  pm.expect(json.payment_status).to.eql('paid');",
+            "  pm.expect(json.paid_at).to.be.a('string').and.not.empty;",
+            "  pm.expect(json.payment_reference).to.eql(pm.environment.get('stripe_session_id'));",
+            "});",
+            "pm.collectionVariables.set('paid_at_first', json.paid_at);"
+          ] } }]
+        },
+        {
+          "name": "03.4 Verify idempotency after Stripe resend",
+          "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/bookings/{{booking_id}}", "description": "أعد event من Stripe Test Dashboard أولًا، ثم أرسل هذا الطلب. يجب أن يبقى paid_at كما هو." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Booking remains paid', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('paid_at did not change', () => pm.expect(json.paid_at).to.eql(pm.collectionVariables.get('paid_at_first')));",
+            "pm.test('Payment reference remains the Checkout Session', () => pm.expect(json.payment_reference).to.eql(pm.environment.get('stripe_session_id')));"
+          ] } }]
+        },
+        {
+          "name": "03.5 Duplicate checkout after payment must be 409",
+          "request": { "method": "POST", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/customer/bookings/{{booking_id}}/stripe-checkout", "description": "بعد نجاح الدفع يجب ألا ينشئ Session جديدة." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Paid booking is rejected', () => pm.response.to.have.status(409));",
+            "pm.test('No checkout URL returned', () => pm.expect(pm.response.json()).not.to.have.property('checkout_url'));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "04 — Webhook security (local/Test secret only)",
+      "description": "لا تضع سر Production هنا. الطلب الموقع يتطلب webhook_test_secret لبيئة اختبار محلية منفصلة.",
+      "item": [
+        {
+          "name": "04.1 Missing Stripe-Signature must be 400",
+          "request": {
+            "auth": { "type": "noauth" }, "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"id\":\"evt_unsigned\",\"object\":\"event\",\"type\":\"customer.created\",\"data\":{\"object\":{}}}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base_url}}/api/stripe/webhook"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Missing signature rejected', () => pm.response.to.have.status(400));",
+            "pm.test('Safe message', () => pm.expect(pm.response.json().message).to.eql('Stripe signature is missing.'));"
+          ] } }]
+        },
+        {
+          "name": "04.2 Wrong Stripe-Signature must be 400",
+          "request": {
+            "auth": { "type": "noauth" }, "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Stripe-Signature", "value": "t=1700000000,v1=invalid" }],
+            "body": { "mode": "raw", "raw": "{\"id\":\"evt_bad_signature\",\"object\":\"event\",\"type\":\"customer.created\",\"data\":{\"object\":{}}}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base_url}}/api/stripe/webhook"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Wrong signature rejected', () => pm.response.to.have.status(400));",
+            "pm.test('Safe message', () => pm.expect(pm.response.json().message).to.eql('Invalid Stripe webhook.'));"
+          ] } }]
+        },
+        {
+          "name": "04.3 Signed unsupported event must be 200",
+          "event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+            "const secret = pm.environment.get('webhook_test_secret');",
+            "if (!secret) { throw new Error('Set webhook_test_secret only to a local/Test Mode webhook secret. Never use a Live secret.'); }",
+            "const CryptoJS = pm.require('npm:crypto-js@4.2.0');",
+            "const timestamp = Math.floor(Date.now() / 1000);",
+            "const payload = pm.request.body.raw;",
+            "const signature = CryptoJS.HmacSHA256(`${timestamp}.${payload}`, secret).toString(CryptoJS.enc.Hex);",
+            "pm.request.headers.upsert({ key: 'Stripe-Signature', value: `t=${timestamp},v1=${signature}` });"
+          ] } }, { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Valid unsupported event acknowledged', () => pm.response.to.have.status(200));",
+            "pm.test('Event safely ignored', () => pm.expect(pm.response.json().message).to.eql('Stripe event received.'));"
+          ] } }],
+          "request": {
+            "auth": { "type": "noauth" }, "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"id\":\"{{webhook_event_id}}\",\"object\":\"event\",\"api_version\":\"2025-02-24.acacia\",\"created\":{{$timestamp}},\"data\":{\"object\":{\"id\":\"cus_postman_test\",\"object\":\"customer\"}},\"livemode\":false,\"pending_webhooks\":1,\"request\":{\"id\":null,\"idempotency_key\":null},\"type\":\"customer.created\"}", "options": { "raw": { "language": "json" } } },
+            "url": "{{base_url}}/api/stripe/webhook",
+            "description": "يستخدم crypto-js عبر Postman Package Library. استخدم سر endpoint محلي/Test فقط، لأن التوقيع يجب أن يطابق السر المهيأ على الخادم المستهدف."
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 — Privacy and negative cases",
+      "item": [
+        {
+          "name": "05.1 Missing booking gives non-empty private 404",
+          "request": { "method": "POST", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/api/customer/bookings/999999999/stripe-checkout" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Missing booking is 404', () => pm.response.to.have.status(404));",
+            "pm.test('Privacy-safe non-empty message', function () {",
+            "  pm.expect(pm.response.json().message).to.eql('Booking not found or does not belong to the authenticated customer.');",
+            "});"
+          ] } }]
+        },
+        {
+          "name": "05.2 Invalid JSON webhook must be 400",
+          "request": {
+            "auth": { "type": "noauth" }, "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Stripe-Signature", "value": "t=1700000000,v1=invalid" }],
+            "body": { "mode": "raw", "raw": "{invalid json" },
+            "url": "{{base_url}}/api/stripe/webhook"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Invalid webhook rejected', () => pm.response.to.have.status(400));"
+          ] } }]
+        }
+      ]
+    }
+  ]
+}
