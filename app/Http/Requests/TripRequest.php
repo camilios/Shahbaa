@@ -20,7 +20,7 @@ class TripRequest extends ApiRequest
                 'departure_date' => 'nullable|date',
                 'arrival_date' => 'nullable|date',
                 'total_seats' => 'required|integer|min:1|max:50',
-                'checkpoint_ids' => 'required|array|min:2',
+                'checkpoint_ids' => 'sometimes|array|min:2',
                 'checkpoint_ids.*' => 'required|integer|distinct|exists:checkpoints,id',
                 'earned_points' => 'nullable|integer|min:0',
             ];

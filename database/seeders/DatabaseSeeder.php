@@ -153,6 +153,18 @@ class DatabaseSeeder extends Seeder
             'status' => $data[4],
         ]));
 
+        $waitingListCustomers = collect(range(1, 29))->map(
+            fn (int $number) => User::create([
+                'name' => "Waiting Customer {$number}",
+                'email' => "waiting.customer{$number}@shahbaa.test",
+                'password' => 'password',
+                'phone' => '0988'.str_pad((string) $number, 6, '0', STR_PAD_LEFT),
+                'gender' => $number % 2 === 0 ? 'female' : 'male',
+                'role' => 'customer',
+                'status' => 'active',
+            ])
+        );
+
         foreach ([
             [$admin, 'Admin'],
             [$driverOne, 'Driver'],
@@ -169,6 +181,10 @@ class DatabaseSeeder extends Seeder
         }
 
         foreach ($extraCustomers as $customer) {
+            Role::create(['name' => 'Customer', 'user_id' => $customer->id]);
+        }
+
+        foreach ($waitingListCustomers as $customer) {
             Role::create(['name' => 'Customer', 'user_id' => $customer->id]);
         }
 
@@ -272,7 +288,24 @@ class DatabaseSeeder extends Seeder
             'total_seats' => 10, 'available_seats' => 10, 'earned_points' => 110,
         ]);
 
-        foreach ([$tripOne, $tripTwo, $tripThree, $tripFour, $tripFive, $tripSix] as $trip) {
+        $waitingListTrip = Trip::create([
+            'driver_id' => $driverOne->id,
+            'type' => 'waiting-list-test',
+            'source_governorate' => 'Aleppo',
+            'destination_governorate' => 'Damascus',
+            'source_governorate_id' => $governorates['Aleppo'],
+            'destination_governorate_id' => $governorates['Damascus'],
+            'point_price' => 40,
+            'money_price' => 45000,
+            'status' => 'scheduled',
+            'departure_date' => now()->addDays(7)->setTime(9, 0),
+            'arrival_date' => now()->addDays(7)->setTime(13, 0),
+            'total_seats' => 50,
+            'available_seats' => 0,
+            'earned_points' => 100,
+        ]);
+
+        foreach ([$tripOne, $tripTwo, $tripThree, $tripFour, $tripFive, $tripSix, $waitingListTrip] as $trip) {
             for ($seat = 1; $seat <= $trip->total_seats; $seat++) {
                 Seat::create([
                     'trip_id' => $trip->id,
@@ -297,6 +330,8 @@ class DatabaseSeeder extends Seeder
             [$tripFive, $homsStation, 'Destination'],
             [$tripSix, $homsStation, 'Origin'],
             [$tripSix, $latakiaStation, 'Destination'],
+            [$waitingListTrip, $aleppoCenter, 'Waiting-list test origin'],
+            [$waitingListTrip, $damascusStation, 'Waiting-list test destination'],
         ] as [$trip, $checkpoint, $description]) {
             TripCheckpoint::create([
                 'trip_id' => $trip->id,
@@ -366,7 +401,17 @@ class DatabaseSeeder extends Seeder
             'seats_count' => 3, 'status' => 'confirmed',
         ]);
 
-        foreach ([$bookingOne, $bookingThree, $bookingTwo, $bookingFour, $bookingFive, $bookingSix, $bookingSeven, $bookingEight, $bookingNine, $bookingTen] as $booking) {
+        $waitingListTripBooking = Booking::create([
+            'user_id' => $customerOne->id,
+            'driver_id' => $driverOne->id,
+            'trip_id' => $waitingListTrip->id,
+            'pickup_checkpoint_id' => $aleppoCenter->id,
+            'dropoff_checkpoint_id' => $damascusStation->id,
+            'seats_count' => 50,
+            'status' => 'confirmed',
+        ]);
+
+        foreach ([$bookingOne, $bookingThree, $bookingTwo, $bookingFour, $bookingFive, $bookingSix, $bookingSeven, $bookingEight, $bookingNine, $bookingTen, $waitingListTripBooking] as $booking) {
             Seat::where('trip_id', $booking->trip_id)
                 ->whereNull('booking_id')
                 ->orderBy('id')
@@ -449,6 +494,17 @@ class DatabaseSeeder extends Seeder
             'pickup_checkpoint_id' => $aleppoCenter->id, 'dropoff_checkpoint_id' => $tartusStation->id,
             'seats_count' => 2, 'status' => 'pending',
         ]);
+
+        foreach ($waitingListCustomers as $customer) {
+            WaitingList::create([
+                'user_id' => $customer->id,
+                'trip_id' => $waitingListTrip->id,
+                'pickup_checkpoint_id' => $aleppoCenter->id,
+                'dropoff_checkpoint_id' => $damascusStation->id,
+                'seats_count' => 1,
+                'status' => 'pending',
+            ]);
+        }
 
         DriverRequest::create([
             'driver_id' => $driverOne->id,

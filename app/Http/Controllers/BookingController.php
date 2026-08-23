@@ -215,8 +215,11 @@ class BookingController extends Controller
         $checkpointIds = $routeCheckpoints->pluck('checkpoint_id');
 
         if (
+            $checkpointIds->isNotEmpty()
+            && (
             ! $checkpointIds->contains($data['pickup_checkpoint_id'])
             || ! $checkpointIds->contains($data['dropoff_checkpoint_id'])
+            )
         ) {
             throw ValidationException::withMessages([
                 'pickup_checkpoint_id' => [
@@ -236,7 +239,11 @@ class BookingController extends Controller
         $destinationGovernorate = $trip->destination_governorate
             ?? $routeCheckpoints->last()?->checkpoint?->governorate;
 
-        if ($pickupCheckpoint->governorate !== $sourceGovernorate) {
+        if (
+            $trip->source_governorate_id
+                ? $pickupCheckpoint->governorate_id !== $trip->source_governorate_id
+                : $pickupCheckpoint->governorate !== $sourceGovernorate
+        ) {
             throw ValidationException::withMessages([
                 'pickup_checkpoint_id' => [
                     'نقطة الصعود يجب أن تكون ضمن محافظة انطلاق الرحلة.',
@@ -244,7 +251,11 @@ class BookingController extends Controller
             ]);
         }
 
-        if ($dropoffCheckpoint->governorate !== $destinationGovernorate) {
+        if (
+            $trip->destination_governorate_id
+                ? $dropoffCheckpoint->governorate_id !== $trip->destination_governorate_id
+                : $dropoffCheckpoint->governorate !== $destinationGovernorate
+        ) {
             throw ValidationException::withMessages([
                 'dropoff_checkpoint_id' => [
                     'نقطة النزول يجب أن تكون ضمن محافظة وصول الرحلة.',

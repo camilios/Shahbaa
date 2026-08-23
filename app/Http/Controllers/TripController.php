@@ -42,7 +42,7 @@ class TripController extends Controller
     {
         return DB::transaction(function () use ($request) {
             $data = $request->validated();
-            $checkpointIds = Arr::pull($data, 'checkpoint_ids');
+            $checkpointIds = Arr::pull($data, 'checkpoint_ids', []);
             unset($data['available_seats']);
 
             $this->validateRouteGovernorates($data, $checkpointIds);
@@ -50,7 +50,9 @@ class TripController extends Controller
             $data['available_seats'] = $data['total_seats'];
             $trip = Trip::create($data);
 
-            $this->replaceCheckpoints($trip, $checkpointIds);
+            if ($checkpointIds !== []) {
+                $this->replaceCheckpoints($trip, $checkpointIds);
+            }
             $this->synchronizeSeats($trip, $trip->total_seats);
 
             return $trip->load([
@@ -139,18 +141,26 @@ class TripController extends Controller
     {
         $sourceId = $data['source_governorate_id'] ?? $trip?->source_governorate_id;
         $destinationId = $data['destination_governorate_id'] ?? $trip?->destination_governorate_id;
-        $route = Checkpoint::query()
-            ->whereIn('id', $checkpointIds)
-            ->get(['id', 'governorate_id'])
-            ->keyBy('id');
-        $firstGovernorateId = $route->get($checkpointIds[0] ?? null)?->governorate_id;
-        $lastGovernorateId = $route->get($checkpointIds[count($checkpointIds) - 1] ?? null)?->governorate_id;
 
         if ((int) $sourceId === (int) $destinationId) {
             throw ValidationException::withMessages([
                 'destination_governorate_id' => ['محافظة الوصول يجب أن تختلف عن محافظة الانطلاق.'],
             ]);
         }
+
+        if ($checkpointIds === []) {
+            $data['source_governorate'] = Governorate::findOrFail($sourceId)->name;
+            $data['destination_governorate'] = Governorate::findOrFail($destinationId)->name;
+
+            return;
+        }
+
+        $route = Checkpoint::query()
+            ->whereIn('id', $checkpointIds)
+            ->get(['id', 'governorate_id'])
+            ->keyBy('id');
+        $firstGovernorateId = $route->get($checkpointIds[0] ?? null)?->governorate_id;
+        $lastGovernorateId = $route->get($checkpointIds[count($checkpointIds) - 1] ?? null)?->governorate_id;
 
         if ((int) $sourceId !== (int) $firstGovernorateId) {
             throw ValidationException::withMessages([
